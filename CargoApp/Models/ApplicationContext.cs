@@ -56,6 +56,14 @@ namespace CargoApp.Models
                 .Property(u => u.Name)
                 .HasDefaultValue("Пользователь");
 
+            modelBuilder.Entity<Client>()
+                .Property(u => u.Rating)
+                .HasDefaultValue(0);
+
+            modelBuilder.Entity<Company>()
+                .Property(u => u.Rating)
+                .HasDefaultValue(0);
+
             modelBuilder.Entity<Logistician>()
                 .HasOne(l => l.Company)
                 .WithMany(c => c.Logisticians)

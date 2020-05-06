@@ -11,6 +11,7 @@ namespace CargoApp.Controllers
 {
     public class HomeController : Controller
     {
+        /*
         private readonly ILogger<HomeController> _logger;
         private ApplicationContext db;
 
@@ -21,7 +22,7 @@ namespace CargoApp.Controllers
         }
         public async Task<IActionResult> Index()
         {
-            return View();//await db.Clients.ToListAsync()
+            return View();  //await db.Clients.ToList<Client>()
         }
         public IActionResult Create()
         {
@@ -34,12 +35,14 @@ namespace CargoApp.Controllers
             await db.SaveChangesAsync();
             return RedirectToAction("Index");
         }
+        */
 /*
         public IActionResult Index()
         {
             return View();
         }
 */
+/*
         public IActionResult Privacy()
         {
             return View();
@@ -50,5 +53,6 @@ namespace CargoApp.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
+*/
     }
 }
