@@ -17,9 +17,9 @@ namespace CargoApp.Models
         public string Number { get; set; }
         public string Model { get; set; }
         [Required]
-        public float Volume { get; set; }
+        public float? Volume { get; set; }
         [Required]
-        public float Carrying { get; set; }
+        public float? Carrying { get; set; }
         [Required]
         public int DriverId { get; set; }
         public Driver Driver { get; set; }

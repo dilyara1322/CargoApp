@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CargoApp.Models;
 using Microsoft.Extensions.Logging;
+using System.Security.Cryptography;
 
 namespace CargoApp.Controllers
 {
@@ -35,16 +36,23 @@ namespace CargoApp.Controllers
 
         // GET: api/Clients
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Client>>> Get() //GetClients()
+        public async Task<ActionResult<IEnumerable<Client>>> GetClients()
         {
-            return await _context.Clients.ToListAsync();
+            return await _context.Clients
+                .Include(c => c.RegData)
+                .Include(c => c.Passport)
+                .DefaultIfEmpty()
+                .ToListAsync();
         }
 
         // GET: api/Clients/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Client>> Get(int id) //GetClients(int id)
+        public async Task<ActionResult<Client>> GetClient(int id)
         {
-            var client = await _context.Clients.FindAsync(id); //FirstOrDefaultAsync(x => x.Id == id);
+            var client = await _context.Clients
+                .Include(c => c.RegData)
+                .Include(c => c.Passport)
+                .FirstOrDefaultAsync(x => x.Id == id);
 
             if (client == null)
             {
@@ -52,6 +60,72 @@ namespace CargoApp.Controllers
             }
             return new ObjectResult(client);
             //return client;
+        }
+        /*
+        // GET: api/Clients/5/requests
+        [HttpGet("{id}/{requests}")]
+        public async Task<ActionResult<IEnumerable<Request>>> GetClientRequests(int id, Request requests)
+        {
+            // _context.Ratings.Add(new Rating { ClientId = 1, CompanyId = 5, MarkFromCompanyToUser = 4, MarkFromUserToConpany = 5 });
+            // _context.SaveChanges();
+
+            if (ClientExists(id))
+            return await _context.Requests
+                .Where(r => r.ClientId == id)
+                .Include(r => r.CurrentStatus)
+                .Include(r => r.Goods)
+                .Include(r => r.Messages)
+                .Include(r => r.SendingAddress)
+                .Include(r => r.ReceivingAddress)
+                .DefaultIfEmpty()
+                .ToListAsync();
+
+            else
+                return NotFound();
+        }
+
+        // GET: api/Clients/5/marks
+        [HttpGet("{id}/{marks}")]
+        public async Task<ActionResult<IEnumerable<Rating>>> GetClientMarks(int id, Rating rating)
+        {
+            // _context.Ratings.Add(new Rating { ClientId = 1, CompanyId = 5, MarkFromCompanyToUser = 4, MarkFromUserToConpany = 5 });
+            // _context.SaveChanges();
+            if (ClientExists(id))
+                return await _context.Ratings
+                    .Where(r => r.ClientId == id)
+                    .DefaultIfEmpty()
+                    .ToListAsync();
+
+            else
+                return NotFound();
+        }*/
+
+        // GET: api/Clients/5/marks
+        [HttpGet("{id}/{detail}")]
+        public async Task<ActionResult<IEnumerable<Object>>> GetClientDetails(int id, string detail)
+        {
+            if (ClientExists(id))
+            {
+                if (detail == "requests")
+                    return await _context.Requests
+                        .Where(r => r.ClientId == id)
+                        .DefaultIfEmpty()
+                        .ToListAsync();
+                if (detail == "marks")
+                    return await _context.Ratings
+                        .Where(r => r.ClientId == id)
+                        .DefaultIfEmpty()
+                        .ToListAsync();
+                if (detail == "messages")
+                    return await _context.UserMessages
+                        .Where(r => r.ClientId == id)
+                        .DefaultIfEmpty()
+                        .ToListAsync();
+
+                return BadRequest();
+            }
+                
+            return NotFound();
         }
 
         // POST - добавление данных (Create)
@@ -142,7 +216,31 @@ namespace CargoApp.Controllers
             Client x = _context.Clients.FirstOrDefault<Client>(x => x.Id == client.Id);
             if (x != null)
             {
-                x.Rating = client.Rating;
+                if (client.Email != null)
+                    x.Email = client.Email;
+                if (client.PhoneNumber != null)
+                    x.PhoneNumber = client.PhoneNumber;
+                if (client.Rating != null)
+                    x.Rating = client.Rating;
+                if (client.RegData != null)
+                {
+                    if (client.RegData.Name != null)
+                        x.RegData.Name = client.RegData.Name;
+                    if (client.RegData.Password != null)
+                    {
+                        /*
+                        using (System.Security.Cryptography.SHA256 sha256 = System.Security.Cryptography.SHA256.Create())
+                        {
+                            string saltedPass = client.RegData.Password + client.RegData.Salt;
+                            byte[] bytes = System.Text.Encoding.GetBytes(saltedPass);
+                            x.RegData.Password = 
+                                sha256.ComputeHash(bytes);
+                        }
+                        */
+                        x.RegData.Password = client.RegData.Password;
+                    }
+
+                }
                 _context.Entry(x).State = EntityState.Modified;
                 //_context.SaveChanges();
             }
@@ -167,7 +265,32 @@ namespace CargoApp.Controllers
             Client x = _context.Clients.FirstOrDefault<Client>(x => x.Id == id);
             if (x != null)
             {
-                x.Rating = client.Rating;
+                if (client.Email != null)
+                    x.Email = client.Email;
+                if (client.PhoneNumber != null)
+                    x.PhoneNumber = client.PhoneNumber;
+                if (client.Rating != null)
+                    x.Rating = client.Rating;
+                if (client.RegData != null)
+                {
+                    if (client.RegData.Name != null)
+                        x.RegData.Name = client.RegData.Name;
+                    if (client.RegData.Password != null)
+                    {
+                        /*
+                        using (System.Security.Cryptography.SHA256 sha256 = System.Security.Cryptography.SHA256.Create())
+                        {
+                            string saltedPass = client.RegData.Password + client.RegData.Salt;
+                            byte[] bytes = System.Text.Encoding.GetBytes(saltedPass);
+                            x.RegData.Password = 
+                                sha256.ComputeHash(bytes);
+                        }
+                        */
+                        x.RegData.Password = client.RegData.Password;
+                    }
+                         
+                }
+
                 _context.Entry(x).State = EntityState.Modified;
                 //_context.SaveChanges();
             }

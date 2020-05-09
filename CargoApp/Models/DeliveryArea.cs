@@ -12,16 +12,16 @@ namespace CargoApp.Models
     public class DeliveryArea
     {
         [Required]
-        public int Latitude { get; set; } //умноженное на 1 000 000
+        public int? Latitude { get; set; } //умноженное на 1 000 000
         [Required]
-        public int Longitude { get; set; } //умноженное на 1 000 000
+        public int? Longitude { get; set; } //умноженное на 1 000 000
 
         [NotMapped]
-        public float RealLatitude { get; set; } //реальное значение, не хранится в базе
+        public float? RealLatitude { get; set; } //реальное значение, не хранится в базе
         [NotMapped]
-        public float RealLongitude { get; set; } //реальное значение, не хранится в базе
+        public float? RealLongitude { get; set; } //реальное значение, не хранится в базе
 
         [Required]
-        public int Radius { get; set; } //meters
+        public int? Radius { get; set; } //meters
     }
 }

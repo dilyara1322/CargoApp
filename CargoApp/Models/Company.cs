@@ -13,10 +13,10 @@ namespace CargoApp.Models
         public int Id { get; set; }
         [Required]
         public string Name { get; set; }
-        public float Rating { get; set; }
+        public float? Rating { get; set; }
 
-        public float MaxCarrying { get; set; }
-        public float MaxVolume { get; set; }
+        public float? MaxCarrying { get; set; }
+        public float? MaxVolume { get; set; }
         public DeliveryArea Area { get; set; }
 
         public List<Logistician> Logisticians { get; set; }

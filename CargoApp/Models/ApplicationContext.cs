@@ -58,11 +58,11 @@ namespace CargoApp.Models
 
             modelBuilder.Entity<Client>()
                 .Property(u => u.Rating)
-                .HasDefaultValue(0);
+                .HasDefaultValue(null);
 
             modelBuilder.Entity<Company>()
                 .Property(u => u.Rating)
-                .HasDefaultValue(0);
+                .HasDefaultValue(null);
 
             modelBuilder.Entity<Logistician>()
                 .HasOne(l => l.Company)

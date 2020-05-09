@@ -24,7 +24,7 @@ namespace CargoApp.Models
 
         [Required]
         public int Id { get; set; }
-        public float Rating { get; set; }
+        public float? Rating { get; set; }
         public string Login { get; set; }
         [ForeignKey("Login")]
         public UserRegData RegData { get; set; }

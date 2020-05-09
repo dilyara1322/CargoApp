@@ -86,6 +86,10 @@ namespace CargoApp
             services.AddDbContext<ApplicationContext>(options => options.UseSqlServer(connection));
             //services.AddControllersWithViews();
             services.AddControllers();
+
+            //игнорирование "ошибки зацикливания"
+            services.AddMvc(option => option.EnableEndpointRouting = false)
+                .AddNewtonsoftJson(opt => opt.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
