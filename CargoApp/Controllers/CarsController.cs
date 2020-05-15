@@ -33,32 +33,34 @@ namespace CargoApp.Controllers
 
         // GET: api/<controller>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Car>>> Get()
+        public async Task<ActionResult<IEnumerable<Car>>> GetCars(int limit = 10, int offset = 0)
         {
             return await _context.Cars
                 .Include(c => c.Driver)
+                .Skip(offset)
+                .Take(limit)
                 .DefaultIfEmpty()
                 .ToListAsync();
         }
 
         // GET api/<controller>/5
-        [HttpGet("{number}")]
-        public async Task<ActionResult<Car>> Get(string number)
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Car>> GetCar(int id)
         {
             var car = await _context.Cars
                 .Include(c => c.Driver)
-                .FirstOrDefaultAsync(x => x.Number == number);
+                .FirstOrDefaultAsync(c => c.Id == id);
 
             if (car == null)
             {
                 return NotFound();
             }
-            return new ObjectResult(car);
+            return car;
         }
 
         // POST api/<controller>
         [HttpPost]
-        public async Task<ActionResult<Car>> Post([FromBody] Car car)
+        public async Task<ActionResult<Car>> PostCar([FromBody] Car car)
         {
             if (car == null)
             {
@@ -72,14 +74,14 @@ namespace CargoApp.Controllers
         }
 
         // PUT api/<controller>/5
-        [HttpPut("{number}")]
-        public async Task<ActionResult<Car>> Put(string number, [FromBody] Car car)
+        [HttpPut("{id}")]
+        public async Task<ActionResult<Car>> PutCar(int id, [FromBody] Car car)
         {
             if (car == null)
             {
                 return BadRequest();
             }
-            if (!_context.Cars.Any(x => x.Number == number))
+            if (!CarExists(id))
             {
                 return NotFound();
             }
@@ -90,21 +92,23 @@ namespace CargoApp.Controllers
         }
 
         // PATCH api/cars/5yft
-        [HttpPatch("{number}")]
-        public async Task<ActionResult<Client>> Patch([FromRoute] string number, [FromBody] Car car)
+        [HttpPatch("{id}")]
+        public async Task<ActionResult<Client>> PatchCar([FromRoute] int id, [FromBody] Car car)
         {
             if (car == null)
             {
                 return BadRequest();
             }
-            if (!_context.Cars.Any(x => x.Number == number))
+            if (!CarExists(id))
             {
                 return NotFound();
             }
 
-            Car x = _context.Cars.FirstOrDefault<Car>(x => x.Number == number);
+            Car x = _context.Cars.FirstOrDefault<Car>(x => x.Id == id);
             if (x != null)
             {
+                if (car.Number != null)
+                    x.Number = (car.Number).ToUpper();
                 if (car.Model != null)
                     x.Model = car.Model;
                 if (car.Carrying != null)
@@ -119,10 +123,10 @@ namespace CargoApp.Controllers
         }
 
         // DELETE api/<controller>/5
-        [HttpDelete("{number}")]
-        public async Task<ActionResult<Car>> Delete(string number)
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<Car>> DeleteCar(int id)
         {
-            var car = await _context.Cars.FindAsync(number);
+            var car = await _context.Cars.FindAsync(id);
             if (car == null)
             {
                 return NotFound();
@@ -132,6 +136,11 @@ namespace CargoApp.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(car);
+        }
+
+        private bool CarExists(int id)
+        {
+            return _context.Cars.Any(e => e.Id == id);
         }
     }
 }

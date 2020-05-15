@@ -4,14 +4,16 @@ using CargoApp.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace CargoApp.Migrations
 {
     [DbContext(typeof(ApplicationContext))]
-    partial class ApplicationContextModelSnapshot : ModelSnapshot
+    [Migration("20200515121402_CompanyAndRequestsConnection")]
+    partial class CompanyAndRequestsConnection
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -110,6 +112,7 @@ namespace CargoApp.Migrations
                         .HasColumnType("real");
 
                     b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Ogrn")
@@ -231,9 +234,6 @@ namespace CargoApp.Migrations
 
                     b.Property<DateTime>("BirthDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("BirthPlace")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Code")
                         .HasColumnType("nvarchar(7)")
@@ -554,6 +554,43 @@ namespace CargoApp.Migrations
                         .HasForeignKey("CargoApp.Models.Passport", "ClientId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.OwnsOne("CargoApp.Models.Address", "BirthPlace", b1 =>
+                        {
+                            b1.Property<int>("PassportClientId")
+                                .HasColumnType("int");
+
+                            b1.Property<string>("Addition")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<string>("City")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<string>("Country")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<string>("Flat")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<string>("House")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<string>("Index")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<string>("Region")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<string>("Street")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.HasKey("PassportClientId");
+
+                            b1.ToTable("Passports");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PassportClientId");
+                        });
                 });
 
             modelBuilder.Entity("CargoApp.Models.Rating", b =>

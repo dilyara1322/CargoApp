@@ -45,12 +45,16 @@ namespace CargoApp.Models
             modelBuilder.Entity<Company>().HasAlternateKey(c => c.Ogrn);
             modelBuilder.Entity<Company>().HasAlternateKey(c => new { c.Inn, c.Kpp });
 
+            modelBuilder.Entity<Car>().HasAlternateKey(c => c.Number);
+
             //HasIndex()
 
             //modelBuilder.Entity<UserRegData>().HasAlternateKey(u => u.Login);
             modelBuilder.Entity<Logistician>().HasAlternateKey(u => u.Login);
             modelBuilder.Entity<Driver>().HasAlternateKey(u => u.Login);
             modelBuilder.Entity<Client>().HasAlternateKey(u => u.Login);
+
+            modelBuilder.Entity<Passport>().HasAlternateKey(p => new { p.Series, p.Number });
 
             modelBuilder.Entity<UserRegData>()
                 .Property(u => u.Name)

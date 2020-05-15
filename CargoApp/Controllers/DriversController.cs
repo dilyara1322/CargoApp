@@ -6,6 +6,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CargoApp.Models;
+using System.Data;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Newtonsoft.Json;
+using CargoApp.Tools;
+using Microsoft.Data.SqlClient;
+using Newtonsoft.Json.Linq;
 
 namespace CargoApp.Controllers
 {
@@ -20,37 +26,104 @@ namespace CargoApp.Controllers
             _context = context;
         }
 
-        // GET: api/Drivers
+        // GET: api/Drivers https://localhost:44341/api/drivers?filter={%22field%22:%22d%22,%22operand%22:%22d%22,%22value%22:%22e%22}
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Driver>>> GetDrivers()
+        public async Task<ActionResult<IEnumerable<Driver>>> GetDrivers(int limit = 10, int offset = 0, string filters = null) // "[{\"field\":\"id\",\"operator\":\">\",\"value\":\"2\"}]")
         {
-            return await _context.Drivers
-                .Include(d => d.RegData)
-                .Include(d => d.Company)
-                .Include(d => d.Car)
-                .Include(d => d.DeliveryArea)
-                .DefaultIfEmpty()
-                .ToListAsync();
+            if (filters == null)
+            {
+                return await _context.Drivers
+                    .Include(d => d.RegData)
+                    .Include(d => d.Company)
+                    .Include(d => d.Car)
+                    .Include(d => d.DeliveryArea)
+                            .Skip(offset)
+                            .Take(limit)
+                    //.DefaultIfEmpty()
+                    .ToListAsync();
+            }
+            else
+            {
+                Filters filtersObj = new Filters(filters);
+                if (filtersObj.Message != null)
+                    return BadRequest(filtersObj.Message);
+
+                string where = filtersObj.GetWhere("Drivers");
+
+                List<Driver> drivers = null;
+                try
+                {
+                    string sql = $"SELECT * FROM Drivers {where}";
+                    drivers = await _context.Drivers
+                        .FromSqlRaw(sql)
+                        .Include(d => d.RegData)
+                        .Include(d => d.Company)
+                        .Include(d => d.Car)
+                        .Include(d => d.DeliveryArea)
+                        .Skip(offset)
+                        .Take(limit)
+                        //.DefaultIfEmpty()
+                        .ToListAsync();
+                    return drivers;
+                }
+                catch (SqlException e)
+                {
+                    return BadRequest("Неверный JSON");
+                }
+                catch (Exception e)
+                {
+                    return BadRequest(e.Message);
+                }
+
+                //if (drivers.Count <= offset) { drivers.Clear(); return drivers; }
+                //if (drivers.Count < offset + limit) { limit = drivers.Count - offset; }
+                //return drivers.GetRange(offset, limit);
+            }
+
         }
 
         // GET: api/Drivers/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Driver>> GetDriver(int id)
         {
-            var driver = _context.Drivers
+            var driver = await _context.Drivers
                 .Include(d => d.RegData)
                 .Include(d => d.Company)
                 .Include(d => d.Car)
                 .Include(d => d.DeliveryArea)
-                .FirstOrDefault(d => d.Id == id);
+                .FirstOrDefaultAsync(d => d.Id == id);
 
             if (driver == null)
-            {
                 return NotFound();
+            else
+                return driver;
+        }
+
+        // GET: api/Drivers/5/requests
+        [HttpGet("{id}/{detail}")]
+        public async Task<ActionResult<IEnumerable<object>>> GetDriverDetails(int id, string detail, int limit = 10, int offset = 0)
+        {
+            if (DriverExists(id))
+            {
+                if (detail == "requests")
+                    return await _context.Requests
+                       .Include(r => r.CurrentStatus)
+                       .Include(r => r.SendingAddress)
+                       .Include(r => r.ReceivingAddress)
+                       .Include(r => r.Goods)
+                       .Skip(offset)
+                       .Take(limit)
+                       .DefaultIfEmpty()
+                       .ToListAsync();
+                if (detail == "car")
+                    return await _context.Cars
+                       .DefaultIfEmpty()
+                       .ToListAsync();
             }
 
-            return driver;
+            return NotFound();
         }
+
 
         // PUT: api/Drivers/5
         [HttpPut("{id}")]
@@ -73,10 +146,11 @@ namespace CargoApp.Controllers
             return Ok(driver);
 
         }
+        /*Content-Type: application/json; charset=utf-8 */
 
         // POST: api/Drivers
         [HttpPost]
-        public async Task<ActionResult<Driver>> PostDriver(Driver driver)
+        public async Task<ActionResult<Driver>> PostDriver([FromBody] Driver driver)
         {
             if (driver == null)
             {
@@ -90,62 +164,132 @@ namespace CargoApp.Controllers
             //return Ok(driver);
         }
 
+        // POST: api/Drivers/5/cars
+        [HttpPost("{id}/{detail}")]
+        public async Task<ActionResult<Driver>> PostDriverDetail(int id, string detail, [FromBody] JObject obj)
+        {
+            if (!DriverExists(id))
+                return NotFound();
+
+            if (obj == null)
+                return BadRequest();
+
+            if (detail.ToLower() == "car")
+            {
+                Car car = null;
+                try { car = obj.ToObject<Car>(); } //if (obj != null) car = JsonConvert.DeserializeObject<Car>(obj); }
+                catch { return BadRequest(); }
+
+                var driver = _context.Drivers
+                    .Include(x => x.Car)
+                    .FirstOrDefault(x => x.Id == id);
+                if (driver.Car != null || car == null || car.Number == null)
+                    return BadRequest();
+
+                car.Number = car.Number.ToUpper();
+                car.DriverId = id;
+                _context.Cars.Add(car);
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction("GetCar", new { id = car.Id, }, car);
+            }
+
+            if (detail.ToLower() == "deliveryArea")
+            {
+                DeliveryArea area = null;
+                try { area = obj.ToObject<DeliveryArea>(); } //if (obj != null) car = JsonConvert.DeserializeObject<Car>(obj); }
+                catch { return BadRequest(); }
+
+                var driver = _context.Drivers
+                    .Include(x => x.DeliveryArea)
+                    .FirstOrDefault(x => x.Id == id);
+                if (driver.DeliveryArea != null || area == null)
+                    return BadRequest();
+
+                driver.DeliveryArea = area;
+                _context.Entry(driver).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction("GetDriver", new { id = driver.Id, }, driver);
+            }
+
+            return NotFound();
+        }
+
         // PATCH api/drivers/5
         [HttpPatch("{id}")]
-        public async Task<ActionResult<Client>> Patch([FromRoute] int id, [FromBody] Driver driver)
+        public async Task<ActionResult<Client>> PatchDriver([FromRoute] int id, [FromBody] Driver driver)
         {
             if (driver == null || id != driver.Id)
-            {
                 return BadRequest();
-            }
-            if (!DriverExists(id))
-            {
+
+            Driver x = await _context.Drivers
+                .Include(d => d.RegData)
+                .Include(d => d.Car)
+                .Include(d => d.DeliveryArea)
+                .FirstOrDefaultAsync(d => d.Id == id);
+
+            if (x == null) 
                 return NotFound();
-            }
 
-            Driver x = _context.Drivers.FirstOrDefault<Driver>(x => x.Id == id);
-            if (x != null)
+            if (driver.RegData != null)
             {
-                if (driver.RegData != null)
-                {
-                    if (driver.RegData.Name != null)
-                        x.RegData.Name = driver.RegData.Name;
-                    if (driver.RegData.Password != null)
-                        x.RegData.Password = driver.RegData.Password;
-                  
-                }
-                if (driver.DeliveryArea != null)
-                {
-                    /*
-                    if (driver.DeliveryArea.Latitude != null)
-                        x.DeliveryArea.Latitude = driver.DeliveryArea.Latitude;
-                    if (driver.DeliveryArea.Longitude != null)
-                        x.DeliveryArea.Longitude = driver.DeliveryArea.Longitude;
-                    */
-                    if (driver.DeliveryArea.RealLatitude != null)
-                        x.DeliveryArea.Latitude = (int)(driver.DeliveryArea.RealLatitude * 1000000);
-                    else if (driver.DeliveryArea.Latitude != null)
-                        x.DeliveryArea.Latitude = driver.DeliveryArea.Latitude;
+                if (driver.RegData.Name != null)
+                    x.RegData.Name = driver.RegData.Name;
+                if (driver.RegData.Password != null)
+                    x.RegData.Password = driver.RegData.Password;
 
-                    if (driver.DeliveryArea.RealLongitude != null)
-                        x.DeliveryArea.Longitude = (int)(driver.DeliveryArea.RealLongitude * 1000000);
-                    else if (driver.DeliveryArea.Longitude != null)
-                        x.DeliveryArea.Longitude = driver.DeliveryArea.Longitude;
-
-                    if (driver.DeliveryArea.Radius != null)
-                        x.DeliveryArea.Radius = driver.DeliveryArea.Radius;
-                }
-                if (driver.CompanyId != 0)
-                    x.CompanyId = driver.CompanyId;
-               // if (driver.Car != null && driver.Car.Number != null)
-                 //   x.Car.Number = driver.Car.Number;
-
-                _context.Entry(x).State = EntityState.Modified;
-                //_context.SaveChanges();
             }
+            if (driver.DeliveryArea != null)
+            {
+                if (x.DeliveryArea == null)
+                    x.DeliveryArea = new DeliveryArea();
+                /*
+                if (driver.DeliveryArea.Latitude != null)
+                    x.DeliveryArea.Latitude = driver.DeliveryArea.Latitude;
+                if (driver.DeliveryArea.Longitude != null)
+                    x.DeliveryArea.Longitude = driver.DeliveryArea.Longitude;
+                */
+                if (driver.DeliveryArea.RealLatitude != null)
+                    x.DeliveryArea.Latitude = (int)(driver.DeliveryArea.RealLatitude * 1000000);
+                else if (driver.DeliveryArea.Latitude != null)
+                    x.DeliveryArea.Latitude = driver.DeliveryArea.Latitude;
+
+                if (driver.DeliveryArea.RealLongitude != null)
+                    x.DeliveryArea.Longitude = (int)(driver.DeliveryArea.RealLongitude * 1000000);
+                else if (driver.DeliveryArea.Longitude != null)
+                    x.DeliveryArea.Longitude = driver.DeliveryArea.Longitude;
+
+                if (driver.DeliveryArea.Radius != null)
+                    x.DeliveryArea.Radius = driver.DeliveryArea.Radius;
+            }
+
+            if (driver.CompanyId != 0)
+                x.CompanyId = driver.CompanyId;
+
+            if (driver.Car != null && driver.Car.Number != null)
+            {
+                if (x.Car == null)
+                    x.Car = new Car();
+
+                if (driver.Car.Number != null)
+                    x.Car.Number = driver.Car.Number;
+                if (driver.Car.Model != null)
+                    x.Car.Model = driver.Car.Model;
+                if (driver.Car.Volume != null)
+                    x.Car.Volume = driver.Car.Volume;
+                if (driver.Car.Carrying != null)
+                    x.Car.Carrying = driver.Car.Carrying;
+            }
+
+            _context.Entry(x).State = EntityState.Modified;
 
             await _context.SaveChangesAsync();
-            return Ok(driver);
+            return Ok(await _context.Drivers
+                .Include(d => d.RegData)
+                .Include(d => d.Car)
+                .Include(d => d.DeliveryArea)
+                .FirstOrDefaultAsync(d => d.Id == id));
         }
 
         // DELETE: api/Drivers/5

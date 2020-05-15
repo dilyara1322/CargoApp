@@ -11,7 +11,7 @@ namespace CargoApp.Models
     {
         [Required]
         public int Id { get; set; }
-        [Required]
+        //[Required]
         public string Name { get; set; }
         public float? Rating { get; set; }
 
@@ -25,7 +25,7 @@ namespace CargoApp.Models
         public Address Address { get; set; }
         public string PhoneNumber { get; set; }
         public string Email { get; set; }
-        public DateTime RegistrationDate { get; set; }
+        public DateTime? RegistrationDate { get; set; }
 
         [MinLength(10)]
         [MaxLength(12)]
@@ -38,8 +38,9 @@ namespace CargoApp.Models
         //[MaxLength(13)]
         [Column(TypeName = "char(13)")]
         public string Ogrn { get; set; }
-        public DateTime OgrnDate { get; set; }
+        public DateTime? OgrnDate { get; set; }
 
         public List<Rating> ClientsMarks { get; set; }
+        public List<Request> Requests { get; set; }
     }
 }

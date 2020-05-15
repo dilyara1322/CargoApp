@@ -28,11 +28,12 @@ namespace CargoApp.Models
         public string FirstName { get; set; }
         public string Patronymic { get; set; }
         public string Sex { get; set; }
-        public DateTime BirthDate { get; set; }
-        public Address BirthPlace { get; set; }
+        public DateTime? BirthDate { get; set; }
+        // public Address BirthPlace { get; set; }
+        public string BirthPlace { get; set; }
 
         public string IssuedBy { get; set; }
-        public DateTime IssuedDate { get; set; }
+        public DateTime? IssuedDate { get; set; }
 
         [MaxLength(7)]
         public string Code { get; set; }

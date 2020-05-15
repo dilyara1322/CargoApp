@@ -11,7 +11,8 @@ namespace CargoApp.Models
     public class Car
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.None)]
+        public int Id { get; set; }
+        //[DatabaseGenerated(DatabaseGeneratedOption.None)]
         [Required]
         [MaxLength(12)]
         public string Number { get; set; }

@@ -14,11 +14,11 @@ namespace CargoApp.Models
         public string Type { get; set; }
         [Required]
         public string Name { get; set; }
-        public float Weight { get; set; }
-        public float Length { get; set; }
-        public float Height { get; set; }
-        public float Width { get; set; }
-        public bool IsFragile { get; set; }
+        public float? Weight { get; set; }
+        public float? Length { get; set; }
+        public float? Height { get; set; }
+        public float? Width { get; set; }
+        public bool? IsFragile { get; set; }
 
         [Required]
         public int RequestId { get; set; }

@@ -10,6 +10,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
+using AutoMapper;
+using CargoApp.Tools;
 
 namespace CargoApp
 {
@@ -86,6 +88,15 @@ namespace CargoApp
             services.AddDbContext<ApplicationContext>(options => options.UseSqlServer(connection));
             //services.AddControllersWithViews();
             services.AddControllers();
+
+            var mappingConfig = new MapperConfiguration(mc =>
+            {
+                mc.AddProfile(new MappingProfile());
+            });
+
+            IMapper mapper = mappingConfig.CreateMapper();
+            services.AddSingleton(mapper);
+            //services.AddAutoMapper();
 
             //игнорирование "ошибки зацикливания"
             services.AddMvc(option => option.EnableEndpointRouting = false)

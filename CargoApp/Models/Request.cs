@@ -17,16 +17,18 @@ namespace CargoApp.Models
         public Client Client { get; set; }
 
        // [Required]
+        public int? CompanyId { get; set; }
+        public Company Company { get; set; }
         public int? DriverId { get; set; }
         public Driver Driver { get; set; }
 
-        public enum Status { Accepted, DriverIsAssigned, OnTheWay, Arrived, Received } //подумать
+        public enum Status { Free, Accepted, DriverIsAssigned, OnTheWay, Arrived, Received } //подумать
         [Required]
-        public Status CurrentStatus { get; set; }
+        public Status? CurrentStatus { get; set; } = Status.Free;
 
         //public Address CurrentLocation { get; set; } //latitude + longitude?
-        public int CurrentLatitude { get; set; } // умноженное на 1 000 000
-        public int CurrentLongitude { get; set; } // умноженное на 1 000 000
+        public int? CurrentLatitude { get; set; } // умноженное на 1 000 000
+        public int? CurrentLongitude { get; set; } // умноженное на 1 000 000
 
         [NotMapped]
         public float RealLatitude { get; set; } //реальное значение, не хранится в базе
@@ -34,9 +36,9 @@ namespace CargoApp.Models
         public float RealLongitude { get; set; } //реальное значение, не хранится в базе
 
         public Address SendingAddress { get; set; }
-        public DateTime SendingDateTime { get; set; }
+        public DateTime? SendingDateTime { get; set; }
         public Address ReceivingAddress { get; set; }
-        public DateTime ReceivingDateTime { get; set; }
+        public DateTime? ReceivingDateTime { get; set; }
         public string Addition { get; set; }
 
         public List<Good> Goods { get; set; }
