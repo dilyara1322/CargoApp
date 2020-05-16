@@ -111,13 +111,15 @@ namespace CargoApp.Controllers
                        .Include(r => r.SendingAddress)
                        .Include(r => r.ReceivingAddress)
                        .Include(r => r.Goods)
+                       .Where(r => r.DriverId == id)
                        .Skip(offset)
                        .Take(limit)
-                       .DefaultIfEmpty()
+                       //.DefaultIfEmpty()
                        .ToListAsync();
                 if (detail == "car")
                     return await _context.Cars
-                       .DefaultIfEmpty()
+                       .Where(c => c.DriverId == id)
+                       //.DefaultIfEmpty()
                        .ToListAsync();
             }
 
@@ -134,7 +136,7 @@ namespace CargoApp.Controllers
                 return BadRequest();
             }
 
-            //_context.Entry(driver).State = EntityState.Modified;
+            _context.Entry(driver).State = EntityState.Modified;
 
             if (!DriverExists(id))
             {
@@ -292,6 +294,77 @@ namespace CargoApp.Controllers
                 .FirstOrDefaultAsync(d => d.Id == id));
         }
 
+        // PATCH api/drivers/5/car
+        [HttpPatch("{id}/{detail}")]
+        public async Task<ActionResult<Client>> PatchDriverDetail(int id, string detail, [FromBody] JObject obj)
+        {
+            if (!DriverExists(id))
+                return NotFound();
+            if (obj == null)
+                return BadRequest();
+
+            if (detail.ToLower() == "car")
+            {
+                Car car = null;
+                try { car = obj.ToObject<Car>(); }
+                catch { return BadRequest(); }
+
+                Car x = await _context.Cars
+                    .FirstOrDefaultAsync(c => c.DriverId == id);
+
+                if (x == null)
+                    return NotFound();
+
+                if (car.Number != null)
+                    x.Number = car.Number;
+                if (car.Model != null)
+                    x.Model = car.Model;
+                if (car.Volume != null)
+                    x.Volume = car.Volume;
+                if (car.Carrying != null)
+                    x.Carrying = car.Carrying;
+
+                _context.Entry(x).State = EntityState.Modified;
+
+                await _context.SaveChangesAsync();
+                return Ok(await _context.Cars
+                    .FirstOrDefaultAsync(d => d.DriverId == id));
+            }
+
+            /* 
+            if (detail.ToLower() == "deliveryarea")
+            {
+                DeliveryArea deliveryArea = null;
+                try { deliveryArea = obj.ToObject<DeliveryArea>(); }
+                catch { return BadRequest(); }
+
+                DeliveryArea x = await _context.Drivers
+                    .FirstOrDefaultAsync(c => c.DriverId == id);
+
+                if (x == null)
+                    return NotFound();
+
+                if (driver.DeliveryArea != null)
+                {
+                    if (driver.DeliveryArea.RealLatitude != null)
+                        x.DeliveryArea.Latitude = (int)(driver.DeliveryArea.RealLatitude * 1000000);
+                    else if (driver.DeliveryArea.Latitude != null)
+                        x.DeliveryArea.Latitude = driver.DeliveryArea.Latitude;
+
+                    if (driver.DeliveryArea.RealLongitude != null)
+                        x.DeliveryArea.Longitude = (int)(driver.DeliveryArea.RealLongitude * 1000000);
+                    else if (driver.DeliveryArea.Longitude != null)
+                        x.DeliveryArea.Longitude = driver.DeliveryArea.Longitude;
+
+                    if (driver.DeliveryArea.Radius != null)
+                        x.DeliveryArea.Radius = driver.DeliveryArea.Radius;
+                }
+            }
+            */
+
+            return NotFound();
+        }
+
         // DELETE: api/Drivers/5
         [HttpDelete("{id}")]
         public async Task<ActionResult<Driver>> DeleteDriver(int id)
@@ -306,6 +379,32 @@ namespace CargoApp.Controllers
             await _context.SaveChangesAsync();
 
             return driver;
+        }
+
+        // DELETE: api/Drivers/5/good
+        [HttpDelete("{id}/{detail}")]
+        public async Task<ActionResult<object>> DeleteDriverDetail(int id, string detail)
+        {
+            if (!DriverExists(id))
+                return NotFound();
+
+            
+            if (detail.ToLower() == "car")
+            {
+                Car car = await _context.Cars
+                    .Where(c => c.DriverId == id)
+                    .FirstOrDefaultAsync();
+
+                if (car == null)
+                    return NotFound();
+
+                _context.Cars.Remove(car);
+                await _context.SaveChangesAsync();
+
+                return car;
+            }
+
+            return NotFound();
         }
 
         private bool DriverExists(int id)

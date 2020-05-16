@@ -37,8 +37,9 @@ namespace CargoApp.Controllers
 
         // GET: api/Clients?limit=30&offset=5
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Client>>> GetClients(int limit = 10, int offset = 0)
+        public async Task<ActionResult<IEnumerable<Client>>> GetClients(int limit = 10, int offset = 0, string filters = null)
         {
+            //filters
             try
             {
                 return await _context.Clients
@@ -374,6 +375,56 @@ namespace CargoApp.Controllers
                 .FirstOrDefaultAsync(x => x.Id == id));
         }
 
+        // PATCH api/clients/5/passport
+        [HttpPatch("{id}/{detail}")]
+        public async Task<ActionResult<Client>> PatchClientDetail(int id, string detail, [FromBody] Passport passport)
+        {
+            if (!ClientExists(id))
+                return NotFound();
+            if (passport == null)
+                return BadRequest();
+
+            if (detail.ToLower() == "passport")
+            {
+                Passport x = await _context.Passports
+                    .FirstOrDefaultAsync(x => x.ClientId == id);
+
+                if (x == null)
+                    return NotFound();
+
+                if (passport.Series != null)
+                    x.Series = passport.Series;
+                if (passport.Number != null)
+                    x.Number = passport.Number;
+                if (passport.Surname != null)
+                    x.Surname = passport.Surname;
+                if (passport.FirstName != null)
+                    x.FirstName = passport.FirstName;
+                if (passport.Patronymic != null)
+                    x.Patronymic = passport.Patronymic;
+                if (passport.Sex != null)
+                    x.Sex = passport.Sex;
+                if (passport.BirthDate != null)
+                    x.BirthDate = passport.BirthDate;
+                if (passport.BirthPlace != null)
+                    x.BirthPlace = passport.BirthPlace;
+                if (passport.IssuedBy != null)
+                    x.IssuedBy = passport.IssuedBy;
+                if (passport.IssuedDate != null)
+                    x.IssuedDate = passport.IssuedDate;
+                if (passport.Code != null)
+                    x.Code = passport.Code;
+
+                _context.Entry(x).State = EntityState.Modified;
+
+                await _context.SaveChangesAsync();
+                return Ok(await _context.Passports
+                    .FirstOrDefaultAsync(x => x.ClientId == id));
+            }
+
+            return NotFound();
+        }
+
         // DELETE - удаление данных 
 
         // DELETE: api/Clients/5
@@ -390,6 +441,31 @@ namespace CargoApp.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(client);
+        }
+
+        // DELETE: api/Clients/5/good
+        [HttpDelete("{id}/{detail}")]
+        public async Task<ActionResult<object>> DeleteRequestDetail(int id, string detail)
+        {
+            if (!ClientExists(id))
+                return NotFound();
+
+            if (detail.ToLower() == "passport")
+            {
+                Passport passport = await _context.Passports
+                    .Where(p => p.ClientId == id)
+                    .FirstOrDefaultAsync();
+
+                if (passport == null)
+                    return NotFound();
+
+                _context.Passports.Remove(passport);
+                await _context.SaveChangesAsync();
+
+                return passport;
+            }
+
+            return NotFound();
         }
 
         private bool ClientExists(int id)
