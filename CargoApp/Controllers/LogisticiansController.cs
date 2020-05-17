@@ -77,15 +77,13 @@ namespace CargoApp.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Logistician>> GetLogistician(int id)
         {
-            var logistician = _context.Logisticians
+            var logistician = await _context.Logisticians
                     .Include(l => l.Company)
                     .Include(l => l.RegData)
-                    .FirstOrDefault(l => l.Id == id);
+                    .FirstOrDefaultAsync(l => l.Id == id);
 
             if (logistician == null)
-            {
                 return NotFound();
-            }
 
             return logistician;
         }
@@ -96,20 +94,21 @@ namespace CargoApp.Controllers
         {
             if (LogisticianExists(id))
             {
-                if (detail == "messages")
+                if (detail.ToLower() == "messages")
                     return await _context.UserMessages
                         .Where(m => m.LogisticianId == id)
                         .Skip(offset)
                         .Take(limit)
-                        .DefaultIfEmpty()
+                        //.DefaultIfEmpty()
                         .ToListAsync();
 
-                return BadRequest();
+                //return BadRequest();
             }
 
             return NotFound();
         }
 
+        /* put
         // PUT: api/Logisticians/5
         // To protect from overposting attacks, enable the specific properties you want to bind to, for
         // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
@@ -141,6 +140,7 @@ namespace CargoApp.Controllers
 
             return NoContent();
         }
+        */
 
         // POST: api/Logisticians
         // To protect from overposting attacks, enable the specific properties you want to bind to, for
@@ -164,15 +164,13 @@ namespace CargoApp.Controllers
         public async Task<ActionResult<Client>> PatchLogistician([FromRoute] int id, [FromBody] Logistician logistician)
         {
             if (logistician == null || id != logistician.Id)
-            {
                 return BadRequest();
-            }
             if (!LogisticianExists(id))
-            {
                 return NotFound();
-            }
 
-            Logistician x = _context.Logisticians.FirstOrDefault<Logistician>(x => x.Id == id);
+            Logistician x = await _context.Logisticians
+                .Include(l => l.RegData)
+                .FirstOrDefaultAsync<Logistician>(x => x.Id == id);
 
             if (logistician.RegData != null)
             {
@@ -182,7 +180,7 @@ namespace CargoApp.Controllers
                     x.RegData.Password = logistician.RegData.Password;
 
             }
-            if (logistician.CompanyId != 0)
+            if (logistician.CompanyId > 0)
                 x.CompanyId = logistician.CompanyId;
 
             _context.Entry(x).State = EntityState.Modified;
@@ -194,16 +192,20 @@ namespace CargoApp.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult<Logistician>> DeleteLogistician(int id)
         {
-            var logistician = await _context.Logisticians.FindAsync(id);
+            var logistician = await _context.Logisticians
+                .Include(l => l.RegData)
+                .FirstOrDefaultAsync(l => l.Id == id);
             if (logistician == null)
-            {
                 return NotFound();
-            }
 
-            _context.Logisticians.Remove(logistician);
+            // UserRegData logisticianReg = await _context.UserRegData
+            //.FirstOrDefaultAsync(r => r.Login == logistician.Login);
+           // _context.Logisticians.Remove(logistician);
+
+            _context.UserRegData.Remove(logistician.RegData);
             await _context.SaveChangesAsync();
 
-            return logistician;
+            return Ok(logistician);
         }
 
         private bool LogisticianExists(int id)

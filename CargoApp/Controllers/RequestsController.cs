@@ -42,39 +42,41 @@ namespace CargoApp.Controllers
                     .Take(limit)
                     .ToListAsync();
             }
-
-            Filters filtersObj = new Filters(filters);
-            if (filtersObj.Message != null)
-                return BadRequest(filtersObj.Message);
-
-            string where = filtersObj.GetWhere("Requests");
-
-            List<Request> requests = null;
-            try
+            else
             {
-                string sql = $"SELECT * FROM Requests {where}";
-                requests = await _context.Requests
-                    .FromSqlRaw(sql)
-                    .Include(r => r.Client)
-                    .Include(r => r.Company)
-                    .Include(r => r.Driver)
-                    .Include(r => r.CurrentStatus)
-                    .Include(r => r.SendingAddress)
-                    .Include(r => r.ReceivingAddress)
-                    .Include(r => r.Goods)
-                    .Skip(offset)
-                    .Take(limit)
-                    //.DefaultIfEmpty()
-                    .ToListAsync();
-                return requests;
-            }
-            catch (SqlException e)
-            {
-                return BadRequest("Неверный JSON");
-            }
-            catch (Exception e)
-            {
-                return BadRequest(e.Message);
+                Filters filtersObj = new Filters(filters);
+                if (filtersObj.Message != null)
+                    return BadRequest(filtersObj.Message);
+
+                string where = filtersObj.GetWhere("Requests");
+
+                List<Request> requests = null;
+                try
+                {
+                    string sql = $"SELECT * FROM Requests {where}";
+                    requests = await _context.Requests
+                        .FromSqlRaw(sql)
+                        .Include(r => r.Client)
+                        .Include(r => r.Company)
+                        .Include(r => r.Driver)
+                        .Include(r => r.CurrentStatus)
+                        .Include(r => r.SendingAddress)
+                        .Include(r => r.ReceivingAddress)
+                        .Include(r => r.Goods)
+                        .Skip(offset)
+                        .Take(limit)
+                        //.DefaultIfEmpty()
+                        .ToListAsync();
+                    return requests;
+                }
+                catch (SqlException e)
+                {
+                    return BadRequest("Неверный JSON");
+                }
+                catch (Exception e)
+                {
+                    return BadRequest(e.Message);
+                }
             }
         }
 
@@ -91,7 +93,7 @@ namespace CargoApp.Controllers
                 .Include(r => r.ReceivingAddress)
                 .Include(r => r.Goods)
                 .Include(r => r.Messages)
-                .FirstOrDefaultAsync(d => d.Id == id);
+                .FirstOrDefaultAsync(r => r.Id == id);
 
             if (request == null)
                 return NotFound();
@@ -122,6 +124,7 @@ namespace CargoApp.Controllers
             return NotFound();
         }
 
+        /* put
         // PUT: api/Requests/5
         // To protect from overposting attacks, enable the specific properties you want to bind to, for
         // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
@@ -143,10 +146,9 @@ namespace CargoApp.Controllers
             await _context.SaveChangesAsync();
             return Ok(request);
         }
+        */
 
         // POST: api/Requests
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPost]
         public async Task<ActionResult<Request>> PostRequest(Request request)
         {
@@ -363,14 +365,31 @@ namespace CargoApp.Controllers
             {
                 Request request = await _context.Requests
                     .Include(r => r.Driver)
-                    .Where(r => r.Id == id)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync(r => r.Id == id);
 
                 if (request.Driver == null)
                     return NotFound();
 
                 request.Driver = null;
                 request.DriverId = null;
+
+                _context.Entry(request).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                return Ok(request);
+            }
+
+            if (detail.ToLower() == "company")
+            {
+                Request request = await _context.Requests
+                    .Include(r => r.Company)
+                    .FirstOrDefaultAsync(r => r.Id == id);
+
+                if (request.Company == null)
+                    return NotFound();
+
+                request.Company = null;
+                request.CompanyId = null;
 
                 _context.Entry(request).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
@@ -391,9 +410,8 @@ namespace CargoApp.Controllers
             if (detail.ToLower() == "good")
             {
                 Good good = await _context.Goods
-                    .Where(g => g.Id == detailId)
                     .Where(g => g.RequestId == id)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync(g => g.Id == detailId);
 
                 if (good == null)
                     return NotFound();

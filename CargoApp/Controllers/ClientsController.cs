@@ -9,6 +9,9 @@ using CargoApp.Models;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 using Newtonsoft.Json.Linq;
+using CargoApp.Tools;
+using Microsoft.Data.SqlClient;
+using System.Xml.Serialization;
 
 namespace CargoApp.Controllers
 {
@@ -17,19 +20,12 @@ namespace CargoApp.Controllers
     public class ClientsController : ControllerBase
     {
         private readonly ApplicationContext _context;
-        private readonly ILogger<Client> _logger;
+       // private readonly ILogger<Client> _logger;
 
-        public ClientsController(ApplicationContext context, ILogger<Client> logger)
+        public ClientsController(ApplicationContext context) //, ILogger<Client> logger)
         {
             _context = context;
-            _logger = logger;
-
-            if (_context.Clients.Count() < 3)
-            {
-                _context.Clients.Add(new Client { RegData = new UserRegData { Login = "client3", Name = "123", Password = "123", Salt = "0" } });
-                _context.Clients.Add(new Client { RegData = new UserRegData { Login = "client4", Name = "123123", Password = "123", Salt = "0" } });
-                _context.SaveChanges();
-            }
+            //_logger = logger;
         }
 
 
@@ -39,8 +35,7 @@ namespace CargoApp.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Client>>> GetClients(int limit = 10, int offset = 0, string filters = null)
         {
-            //filters
-            try
+            if (filters == null)
             {
                 return await _context.Clients
                     .Include(c => c.RegData)
@@ -51,9 +46,36 @@ namespace CargoApp.Controllers
                     //.DefaultIfEmpty()
                     .ToListAsync();
             }
-            catch
+            else
             {
-                return Problem();
+                Filters filtersObj = new Filters(filters);
+                if (filtersObj.Message != null)
+                    return BadRequest(filtersObj.Message);
+
+                string where = filtersObj.GetWhere("Clients");
+
+                List<Client> clients = null;
+                try
+                {
+                    string sql = $"SELECT * FROM Clients {where}";
+                    clients = await _context.Clients
+                        .FromSqlRaw(sql)
+                        .Include(c => c.RegData)
+                        .Include(c => c.Passport)
+                        .Skip(offset)
+                        .Take(limit)
+                        //.DefaultIfEmpty()
+                        .ToListAsync();
+                    return clients;
+                }
+                catch (SqlException e)
+                {
+                    return BadRequest("Неверный JSON");
+                }
+                catch (Exception e)
+                {
+                    return BadRequest(e.Message);
+                }
             }
         }
 
@@ -68,11 +90,9 @@ namespace CargoApp.Controllers
                 .FirstOrDefaultAsync(x => x.Id == id);
 
             if (client == null)
-            {
                 return NotFound();
-            }
-            return new ObjectResult(client);
-            //return client;
+
+            return client;
         }
 
         // GET: api/Clients/5/marks
@@ -83,24 +103,27 @@ namespace CargoApp.Controllers
             {
                 if (detail == "requests")
                     return await _context.Requests
+                        .Include(r => r.CurrentStatus)
+                        .Include(r => r.SendingAddress)
+                        .Include(r => r.ReceivingAddress)
                         .Where(r => r.ClientId == id)
                         .Skip(offset)
                         .Take(limit)
-                        .DefaultIfEmpty()
+                        //.DefaultIfEmpty()
                         .ToListAsync();
                 if (detail == "marks")
                     return await _context.Ratings
                         .Where(r => r.ClientId == id)
                         .Skip(offset)
                         .Take(limit)
-                        .DefaultIfEmpty()
+                        //.DefaultIfEmpty()
                         .ToListAsync();
                 if (detail == "messages")
                     return await _context.UserMessages
                         .Where(r => r.ClientId == id)
                         .Skip(offset)
                         .Take(limit)
-                        .DefaultIfEmpty()
+                        //.DefaultIfEmpty()
                         .ToListAsync();
 
                 return BadRequest();
@@ -135,14 +158,15 @@ namespace CargoApp.Controllers
             if (obj == null)
                 return BadRequest();
 
-            var client = await _context.Clients
-                .FirstOrDefaultAsync(x => x.Id == id);
-
-            if (client == null)
-                return NotFound();
-
             if (detail.ToLower() == "passport")
             {
+                var client = await _context.Clients
+                    .Include(c => c.Passport)
+                    .FirstOrDefaultAsync(c => c.Id == id);
+
+                if (client == null)
+                    return NotFound();
+
                 Passport passport = null;
                 try { passport = obj.ToObject<Passport>(); } 
                 catch { return BadRequest(); }
@@ -158,10 +182,40 @@ namespace CargoApp.Controllers
                 return Ok(await _context.Passports.FirstOrDefaultAsync(p => p.ClientId == id));
             }
 
+            if (detail.ToLower() == "mark")
+            {
+                if (!ClientExists(id))
+                    return NotFound();
+
+                Rating mark = null;
+                try { mark = obj.ToObject<Rating>(); }
+                catch { return BadRequest(); }
+
+                if (mark.CompanyId <= 0 || mark.MarkFromUserToCompany == null)
+                    return BadRequest();
+
+                if (await _context.Ratings
+                        .Where(r => r.CompanyId == mark.CompanyId)
+                        .FirstOrDefaultAsync(r => r.ClientId == id)
+                            != null)
+                    return BadRequest();
+
+                mark.ClientId = id;
+                mark.MarkFromCompanyToUser = null;
+
+                _context.Ratings.Add(mark);
+                await _context.SaveChangesAsync();
+
+                return Ok(await _context.Ratings
+                    .Where(r => r.CompanyId == mark.CompanyId)
+                    .FirstOrDefaultAsync(r => r.ClientId == id));
+            }
+
             return NotFound();
 
         }
 
+        /*Content-Type: application/json; charset=utf-8 */
         /* POST body (example):
          {
   "login":"ghf",
@@ -176,7 +230,7 @@ namespace CargoApp.Controllers
 
         // PUT - полное изменение данных 
 
-        /*
+        /* put without id
         // PUT api/clients/
         [HttpPut]
         public async Task<ActionResult<Client>> Put([FromBody] Client client)
@@ -196,6 +250,7 @@ namespace CargoApp.Controllers
         }
         */
 
+        /* put
         // PUT api/clients/5
         [HttpPut("{id}")]
         public async Task<ActionResult<Client>> PutClient([FromRoute ]int id, [FromBody] Client client)
@@ -213,11 +268,11 @@ namespace CargoApp.Controllers
             await _context.SaveChangesAsync();
             return Ok(client);
         }
-
+        */
 
         // PATCH - частичное изменение данных 
 
-        /*
+        /* patch without id
         // PATCH api/clients/
         [HttpPatch]
         public async Task<ActionResult<Client>> Patch ([FromBody] Client client)
@@ -377,15 +432,19 @@ namespace CargoApp.Controllers
 
         // PATCH api/clients/5/passport
         [HttpPatch("{id}/{detail}")]
-        public async Task<ActionResult<Client>> PatchClientDetail(int id, string detail, [FromBody] Passport passport)
+        public async Task<ActionResult<Client>> PatchClientDetail(int id, string detail, [FromBody] JObject obj)
         {
             if (!ClientExists(id))
                 return NotFound();
-            if (passport == null)
+            if (obj == null)
                 return BadRequest();
 
             if (detail.ToLower() == "passport")
             {
+                Passport passport = null;
+                try { passport = obj.ToObject<Passport>(); }
+                catch { return BadRequest(); }
+
                 Passport x = await _context.Passports
                     .FirstOrDefaultAsync(x => x.ClientId == id);
 
@@ -422,6 +481,35 @@ namespace CargoApp.Controllers
                     .FirstOrDefaultAsync(x => x.ClientId == id));
             }
 
+            if (detail.ToLower() == "mark")
+            {
+                Rating mark = null;
+                try { mark = obj.ToObject<Rating>(); }
+                catch { return BadRequest(); }
+
+                if (mark.CompanyId <= 0 || mark.MarkFromUserToCompany == null)
+                    return BadRequest();
+
+                Rating x = await _context.Ratings
+                        .Where(r => r.CompanyId == mark.CompanyId)
+                        .FirstOrDefaultAsync(r => r.ClientId == id);
+
+                if (x == null)
+                    return NotFound();
+
+                if (mark.MarkFromUserToCompany != null)
+                    x.MarkFromUserToCompany = mark.MarkFromUserToCompany;
+                else 
+                    return BadRequest();
+
+                _context.Entry(x).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                return Ok(await _context.Ratings
+                    .Where(r => r.CompanyId == mark.CompanyId)
+                    .FirstOrDefaultAsync(r => r.ClientId == id));
+            }
+
             return NotFound();
         }
 
@@ -431,21 +519,26 @@ namespace CargoApp.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult<Client>> DeleteClient(int id)
         {
-            var client = await _context.Clients.FindAsync(id);
+            var client = await _context.Clients
+                .Include(c => c.RegData)
+                .FirstOrDefaultAsync(c => c.Id == id);
             if (client == null)
-            {
                 return NotFound();
-            }
 
-            _context.Clients.Remove(client);
+            _context.UserRegData.Remove(client.RegData);
+
+            //var client = await _context.Clients.FindAsync(id);
+            //if (client == null) return NotFound();
+            //_context.Clients.Remove(client);
+
             await _context.SaveChangesAsync();
 
             return Ok(client);
         }
 
-        // DELETE: api/Clients/5/good
+        // DELETE: api/Clients/5/mark
         [HttpDelete("{id}/{detail}")]
-        public async Task<ActionResult<object>> DeleteRequestDetail(int id, string detail)
+        public async Task<ActionResult<object>> DeleteClientDetail(int id, string detail)
         {
             if (!ClientExists(id))
                 return NotFound();
@@ -453,8 +546,7 @@ namespace CargoApp.Controllers
             if (detail.ToLower() == "passport")
             {
                 Passport passport = await _context.Passports
-                    .Where(p => p.ClientId == id)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync(p => p.ClientId == id);
 
                 if (passport == null)
                     return NotFound();
@@ -463,6 +555,35 @@ namespace CargoApp.Controllers
                 await _context.SaveChangesAsync();
 
                 return passport;
+            }
+
+            return NotFound();
+        }
+
+        // DELETE: api/Clients/5/mark/6       (6 - companyId)
+        [HttpDelete("{id}/{detail}/{detailId}")]
+        public async Task<ActionResult<object>> DeleteClientDetailWithId(int id, string detail, int detailId)
+        {
+            if (!ClientExists(id))
+                return NotFound();
+
+            if (detail.ToLower() == "mark")
+            {
+                Rating mark = await _context.Ratings
+                    .Where(m => m.CompanyId == detailId)
+                    .FirstOrDefaultAsync(m => m.ClientId == id);
+
+                if (mark == null)
+                    return NotFound();
+
+                mark.MarkFromUserToCompany = null;
+
+                //_context.Ratings.Remove(mark);
+
+                _context.Entry(mark).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                return Ok(mark);
             }
 
             return NotFound();

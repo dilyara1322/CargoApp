@@ -9,6 +9,7 @@ using CargoApp.Models;
 using CargoApp.Tools;
 using Microsoft.Data.SqlClient;
 using AutoMapper;
+using Newtonsoft.Json.Linq;
 
 namespace CargoApp.Controllers
 {
@@ -17,12 +18,12 @@ namespace CargoApp.Controllers
     public class CompaniesController : ControllerBase
     {
         private readonly ApplicationContext _context;
-        private readonly IMapper _mapper;
+       // private readonly IMapper _mapper;
 
-        public CompaniesController(ApplicationContext context, IMapper mapper)
+        public CompaniesController(ApplicationContext context) //, IMapper mapper)
         {
             _context = context;
-            _mapper = mapper;
+           // _mapper = mapper;
         }
 
         // GET: api/Companies
@@ -79,7 +80,7 @@ namespace CargoApp.Controllers
             var company = await _context.Companies
                 .Include(c => c.Area)
                 .Include(c => c.Address)  //geo api
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .FirstOrDefaultAsync(c => c.Id == id);
 
             if (company == null)
             {
@@ -97,6 +98,7 @@ namespace CargoApp.Controllers
             {
                 if (detail.ToLower() == "drivers")
                     return await _context.Drivers
+                        .Include(d => d.Car)
                         .Include(d => d.DeliveryArea)
                         .Include(d => d.Requests)
                         .Where(d => d.CompanyId == id)
@@ -163,6 +165,59 @@ namespace CargoApp.Controllers
             return NotFound();
         }
 
+        // POST: api/Companies
+        [HttpPost]
+        public async Task<ActionResult<Company>> PostCompany(Company company)
+        {
+            if (company == null)
+                return BadRequest();
+
+            _context.Companies.Add(company);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetCompany", new { id = company.Id }, company);
+        }
+
+        // POST: api/Companies/5/mark
+        [HttpPost("{id}/{detail}")]
+        public async Task<ActionResult<Company>> PostCompanyDetail(int id, string detail, JObject obj)
+        {
+            if (obj == null)
+                return BadRequest();
+
+            if (detail.ToLower() == "mark")
+            {
+                if (!CompanyExists(id))
+                    return NotFound();
+
+                Rating mark = null;
+                try { mark = obj.ToObject<Rating>(); }
+                catch { return BadRequest(); }
+
+                if (mark.ClientId <= 0 || mark.MarkFromCompanyToUser == null)
+                    return BadRequest();
+
+                if (await _context.Ratings
+                        .Where(r => r.ClientId == mark.ClientId)
+                        .FirstOrDefaultAsync(r => r.CompanyId == id)
+                            != null)
+                    return BadRequest();
+
+                mark.CompanyId = id;
+                mark.MarkFromUserToCompany = null;
+
+                _context.Ratings.Add(mark);
+                await _context.SaveChangesAsync();
+
+                return Ok(await _context.Ratings
+                    .Where(r => r.ClientId == mark.ClientId)
+                    .FirstOrDefaultAsync(r => r.CompanyId == id));
+            }
+
+            return NotFound();
+        }
+
+        /* put
         // PUT: api/Companies/5
         // To protect from overposting attacks, enable the specific properties you want to bind to, for
         // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
@@ -194,6 +249,7 @@ namespace CargoApp.Controllers
 
             return NoContent();
         }
+        */
 
         // PATCH api/companies/5
         [HttpPatch("{id}")]
@@ -205,7 +261,7 @@ namespace CargoApp.Controllers
             Company x = await _context.Companies
                 .Include(c => c.Address)
                 .Include(c => c.Area)
-                .FirstOrDefaultAsync<Company>(x => x.Id == id);
+                .FirstOrDefaultAsync<Company>(c => c.Id == id);
 
             if (x == null) 
                 return NotFound();
@@ -292,19 +348,45 @@ namespace CargoApp.Controllers
                 .FirstOrDefaultAsync<Company>(x => x.Id == id));
         }
 
-        // POST: api/Companies
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
-        [HttpPost]
-        public async Task<ActionResult<Company>> PostCompany(Company company)
+        // PATCH api/companies/5/mark
+        [HttpPatch("{id}/{detail}")]
+        public async Task<ActionResult<Client>> PatchClientDetail(int id, string detail, [FromBody] JObject obj)
         {
-            if (company == null)
+            if (!CompanyExists(id))
+                return NotFound();
+            if (obj == null)
                 return BadRequest();
 
-            _context.Companies.Add(company);
-            await _context.SaveChangesAsync();
+            if (detail.ToLower() == "mark")
+            {
+                Rating mark = null;
+                try { mark = obj.ToObject<Rating>(); }
+                catch { return BadRequest(); }
 
-            return CreatedAtAction("GetCompany", new { id = company.Id }, company);
+                if (mark.ClientId <= 0 || mark.MarkFromCompanyToUser == null)
+                    return BadRequest();
+
+                Rating x = await _context.Ratings
+                        .Where(r => r.ClientId == mark.ClientId)
+                        .FirstOrDefaultAsync(r => r.CompanyId == id);
+
+                if (x == null)
+                    return NotFound();
+
+                if (mark.MarkFromCompanyToUser != null)
+                    x.MarkFromCompanyToUser = mark.MarkFromCompanyToUser;
+                else
+                    return BadRequest();
+
+                _context.Entry(x).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                return Ok(await _context.Ratings
+                    .Where(r => r.ClientId == mark.ClientId)
+                    .FirstOrDefaultAsync(r => r.CompanyId == id));
+            }
+
+            return NotFound();
         }
 
         // DELETE: api/Companies/5
@@ -321,6 +403,35 @@ namespace CargoApp.Controllers
             await _context.SaveChangesAsync();
 
             return company;
+        }
+
+        // DELETE: api/companies/5/mark/6       (6 - clientId)
+        [HttpDelete("{id}/{detail}/{detailId}")]
+        public async Task<ActionResult<object>> DeleteClientDetailWithId(int id, string detail, int detailId)
+        {
+            if (!CompanyExists(id))
+                return NotFound();
+
+            if (detail.ToLower() == "mark")
+            {
+                Rating mark = await _context.Ratings
+                    .Where(m => m.ClientId == detailId)
+                    .FirstOrDefaultAsync(m => m.CompanyId == id);
+
+                if (mark == null)
+                    return NotFound();
+
+                mark.MarkFromCompanyToUser = null;
+
+                //_context.Ratings.Remove(mark);
+
+                _context.Entry(mark).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                return Ok(mark);
+            }
+
+            return NotFound();
         }
 
         private bool CompanyExists(int id)

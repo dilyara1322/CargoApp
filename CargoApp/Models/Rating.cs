@@ -18,7 +18,7 @@ namespace CargoApp.Models
         [Required]
         public int ClientId { get; set; }
         //  public Client Client { get; set; }
-        public int MarkFromUserToConpany { get; set; }
-        public int MarkFromCompanyToUser { get; set; }
+        public int? MarkFromUserToCompany { get; set; }
+        public int? MarkFromCompanyToUser { get; set; }
     }
 }

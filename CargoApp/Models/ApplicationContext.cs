@@ -20,6 +20,7 @@ namespace CargoApp.Models
         public DbSet<Passport> Passports { get; set; }
         public DbSet<Good> Goods { get; set; }
         public DbSet<UserMessage> UserMessages { get; set; }
+        public DbSet<UserRegData> UserRegData { get; set; }
 
         public ApplicationContext(DbContextOptions<ApplicationContext> options) : base(options)
         {
@@ -86,6 +87,19 @@ namespace CargoApp.Models
             modelBuilder.Entity<Client>()
                 .HasMany(c => c.Messages)
                 .WithOne(m => m.Client)
+                .OnDelete(DeleteBehavior.ClientSetNull);
+
+            modelBuilder.Entity<Request>()
+                .HasOne(r => r.Company)
+                .WithMany(c => c.Requests)
+                .OnDelete(DeleteBehavior.ClientSetNull);
+            modelBuilder.Entity<Request>()
+                .HasOne(r => r.Client)
+                .WithMany(c => c.Requests)
+                .OnDelete(DeleteBehavior.ClientSetNull);
+            modelBuilder.Entity<Request>()
+                .HasOne(r => r.Driver)
+                .WithMany(d => d.Requests)
                 .OnDelete(DeleteBehavior.ClientSetNull);
 
 
