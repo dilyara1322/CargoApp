@@ -37,6 +37,7 @@ namespace CargoApp.Controllers
                     .Include(c => c.Address)
                     .Skip(offset)
                     .Take(limit)
+                    .AsNoTracking()
                     // .DefaultIfEmpty()
                     .ToListAsync();
             }
@@ -58,6 +59,7 @@ namespace CargoApp.Controllers
                         .Include(c => c.Address)
                         .Skip(offset)
                         .Take(limit)
+                        .AsNoTracking()
                         //.DefaultIfEmpty()
                         .ToListAsync();
                     return companies;
@@ -80,6 +82,7 @@ namespace CargoApp.Controllers
             var company = await _context.Companies
                 .Include(c => c.Area)
                 .Include(c => c.Address)  //geo api
+                .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Id == id);
 
             if (company == null)
@@ -104,6 +107,7 @@ namespace CargoApp.Controllers
                         .Where(d => d.CompanyId == id)
                         .Skip(offset)
                         .Take(limit)
+                        .AsNoTracking()
                         //.DefaultIfEmpty()
                         .ToListAsync();
                 if (detail.ToLower() == "logisticians")
@@ -111,6 +115,7 @@ namespace CargoApp.Controllers
                         .Where(l => l.CompanyId == id)
                         .Skip(offset)
                         .Take(limit)
+                        .AsNoTracking()
                         //.DefaultIfEmpty()
                         .ToListAsync();
                 if (detail.ToLower() == "marks")
@@ -118,24 +123,26 @@ namespace CargoApp.Controllers
                         .Where(r => r.CompanyId == id)
                         .Skip(offset)
                         .Take(limit)
+                        .AsNoTracking()
                         //.DefaultIfEmpty()
                         .ToListAsync();
                 if (detail.ToLower() == "requests")
                 {
                     return await _context.Requests
-                        .Include(r => r.CurrentStatus)
+                      //  .Include(r => r.CurrentStatus)
                         .Include(r => r.SendingAddress)
                         .Include(r => r.ReceivingAddress)
                         .Include(r => r.Goods)
                         //.Include(r => r.Messages)
                         .Skip(offset)
                         .Take(limit)
+                        .AsNoTracking()
                         .ToListAsync();
 
                     /* другой алгоритм
                     List<Driver> companyDrivers = await _context.Drivers
                         .Include(d => d.Requests)
-                            .ThenInclude(r => r.CurrentStatus)
+                          //  .ThenInclude(r => r.CurrentStatus)
                         .Where(d => d.CompanyId == id)
                         .Where(d => d.Requests != null)
                         .OrderBy(d => d.Requests.date) ????
@@ -178,9 +185,9 @@ namespace CargoApp.Controllers
             return CreatedAtAction("GetCompany", new { id = company.Id }, company);
         }
 
-        // POST: api/Companies/5/mark
+        // POST: api/Companies/5/mark     ///1 (1-clientid)
         [HttpPost("{id}/{detail}")]
-        public async Task<ActionResult<Company>> PostCompanyDetail(int id, string detail, JObject obj)
+        public async Task<ActionResult<Company>> PostCompanyDetail(int id, string detail, [FromBody] JObject obj)
         {
             if (obj == null)
                 return BadRequest();

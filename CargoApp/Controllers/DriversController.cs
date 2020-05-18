@@ -107,7 +107,7 @@ namespace CargoApp.Controllers
             {
                 if (detail.ToLower() == "requests")
                     return await _context.Requests
-                       .Include(r => r.CurrentStatus)
+                       //.Include(r => r.CurrentStatus)
                        .Include(r => r.SendingAddress)
                        .Include(r => r.ReceivingAddress)
                        .Include(r => r.Goods)

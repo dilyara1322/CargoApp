@@ -33,7 +33,7 @@ namespace CargoApp.Controllers
                     .Include(r => r.Client)
                     .Include(r => r.Company)
                     .Include(r => r.Driver)
-                    .Include(r => r.CurrentStatus)
+                    //.Include(r => r.CurrentStatus)
                     .Include(r => r.SendingAddress)
                     .Include(r => r.ReceivingAddress)
                     .Include(r => r.Goods)
@@ -59,7 +59,7 @@ namespace CargoApp.Controllers
                         .Include(r => r.Client)
                         .Include(r => r.Company)
                         .Include(r => r.Driver)
-                        .Include(r => r.CurrentStatus)
+                        //.Include(r => r.CurrentStatus)
                         .Include(r => r.SendingAddress)
                         .Include(r => r.ReceivingAddress)
                         .Include(r => r.Goods)
@@ -88,7 +88,7 @@ namespace CargoApp.Controllers
                 .Include(r => r.Client)
                 .Include(r => r.Company)
                 .Include(r => r.Driver)
-                .Include(r => r.CurrentStatus)
+                //.Include(r => r.CurrentStatus)
                 .Include(r => r.SendingAddress)
                 .Include(r => r.ReceivingAddress)
                 .Include(r => r.Goods)
@@ -212,7 +212,7 @@ namespace CargoApp.Controllers
                 return BadRequest();
 
             Request x = await _context.Requests
-                .Include(x => x.CurrentStatus)
+               // .Include(x => x.CurrentStatus)
                 .Include(x => x.SendingAddress)
                 .Include(x => x.ReceivingAddress)
                 //.Include(x => x.Goods)
@@ -284,7 +284,7 @@ namespace CargoApp.Controllers
 
             await _context.SaveChangesAsync();
             return Ok(await _context.Requests
-                .Include(x => x.CurrentStatus)
+                //.Include(x => x.CurrentStatus)
                 .Include(x => x.SendingAddress)
                 .Include(x => x.ReceivingAddress)
                // .Include(x => x.Goods)
