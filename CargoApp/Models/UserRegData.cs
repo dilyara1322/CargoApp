@@ -15,11 +15,13 @@ namespace CargoApp.Models
         
         [Required]
         [Key]
+       // [MaxLength(30)]
         public string Login { get; set; }
         [Required]
         public string Password { get; set; }
-        [Required]
-        public string Salt { get; set; }
+       // [Required]
+       // public string Salt { get; set; }
+        [MaxLength(30)]
         public string Name { get; set; }
     }
 }

@@ -14,6 +14,7 @@ namespace CargoApp.Controllers
     [ApiController]
     public class CarsController : ControllerBase
     {
+        /*
         private readonly ApplicationContext _context;
 
         public CarsController(ApplicationContext context)
@@ -142,5 +143,6 @@ namespace CargoApp.Controllers
         {
             return _context.Cars.Any(e => e.Id == id);
         }
+        */
     }
 }

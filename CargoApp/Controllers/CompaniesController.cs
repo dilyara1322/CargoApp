@@ -18,19 +18,17 @@ namespace CargoApp.Controllers
     public class CompaniesController : ControllerBase
     {
         private readonly ApplicationContext _context;
-       // private readonly IMapper _mapper;
 
-        public CompaniesController(ApplicationContext context) //, IMapper mapper)
+        public CompaniesController(ApplicationContext context)
         {
             _context = context;
-           // _mapper = mapper;
         }
 
         // GET: api/Companies
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Company>>> GetCompanies(int limit = 10, int offset = 0, string filters = null)
+        public async Task<ActionResult<IEnumerable<Company>>> GetCompanies(string orderby = "id", int limit = 10, int offset = 0, string filters = null)
         {
-            if (filters == null)
+            if (filters == null && orderby.ToLower() == "id")
             {
                 return await _context.Companies
                     .Include(c => c.Area)
@@ -43,25 +41,46 @@ namespace CargoApp.Controllers
             }
             else
             {
-                Filters filtersObj = new Filters(filters);
-                if (filtersObj.Message != null)
-                    return BadRequest(filtersObj.Message);
+                string where = "";
+                if (filters != null)
+                {
+                    Filters filtersObj = new Filters(filters);
+                    if (filtersObj.Message != null)
+                        return BadRequest(filtersObj.Message);
 
-                string where = filtersObj.GetWhere("Companies");
+                    where = filtersObj.GetWhere("Companies");
+                }
+                string sortby = "";
+                switch (orderby.ToLower())
+                {
+                    case "id": break;
+                    case "name": sortby = " ORDER BY Companies.name "; break;
+                    case "rating": sortby = " ORDER BY Companies.rating "; break;
+                    case "maxcarrying": sortby = " ORDER BY Companies.maxcarrying "; break;
+                    case "registrationdate": sortby = " ORDER BY Companies.registrationdate "; break;
+                    default: return BadRequest();
+                }
 
                 List<Company> companies = null;
                 try
                 {
                     string sql = $"SELECT * FROM Companies {where}";
-                    companies = await _context.Companies
-                        .FromSqlRaw(sql)
-                        .Include(c => c.Area) 
-                        .Include(c => c.Address)
-                        .Skip(offset)
-                        .Take(limit)
-                        .AsNoTracking()
-                        //.DefaultIfEmpty()
-                        .ToListAsync();
+                    if (sortby == "")
+                        companies = await _context.Companies
+                            .FromSqlRaw(sql)
+                            .Include(c => c.Area) 
+                            .Include(c => c.Address)
+                            .Skip(offset)
+                            .Take(limit)
+                            .AsNoTracking()
+                            //.DefaultIfEmpty()
+                            .ToListAsync();
+                    else
+                        companies = await _context.Companies
+                            .FromSqlRaw(sql)
+                            .AsNoTracking()
+                            //.DefaultIfEmpty()
+                            .ToListAsync();
                     return companies;
                 }
                 catch (SqlException e)
@@ -101,7 +120,7 @@ namespace CargoApp.Controllers
             {
                 if (detail.ToLower() == "drivers")
                     return await _context.Drivers
-                        .Include(d => d.Car)
+                        .Include(d => d.Cars)
                         .Include(d => d.DeliveryArea)
                         .Include(d => d.Requests)
                         .Where(d => d.CompanyId == id)
@@ -129,7 +148,6 @@ namespace CargoApp.Controllers
                 if (detail.ToLower() == "requests")
                 {
                     return await _context.Requests
-                      //  .Include(r => r.CurrentStatus)
                         .Include(r => r.SendingAddress)
                         .Include(r => r.ReceivingAddress)
                         .Include(r => r.Goods)
@@ -174,7 +192,7 @@ namespace CargoApp.Controllers
 
         // POST: api/Companies
         [HttpPost]
-        public async Task<ActionResult<Company>> PostCompany(Company company)
+        public async Task<ActionResult<Company>> PostCompany([FromBody] Company company)
         {
             if (company == null)
                 return BadRequest();
@@ -260,7 +278,7 @@ namespace CargoApp.Controllers
 
         // PATCH api/companies/5
         [HttpPatch("{id}")]
-        public async Task<ActionResult<Company>> PatchCompany([FromRoute] int id, [FromBody] Company company)
+        public async Task<ActionResult<Company>> PatchCompany(int id, [FromBody] Company company)
         {
             if (company == null)
                 return BadRequest();
@@ -277,8 +295,7 @@ namespace CargoApp.Controllers
                 x.Name = company.Name;
             if (company.MaxCarrying != null)
                 x.MaxCarrying = company.MaxCarrying;
-            if (company.MaxVolume != null)
-                x.MaxVolume = company.MaxVolume;
+          //  if (company.MaxVolume != null) x.MaxVolume = company.MaxVolume;
 
             if (company.Area != null)
             {
@@ -288,14 +305,16 @@ namespace CargoApp.Controllers
                 if (company.Area.Radius != null)
                     x.Area.Radius = company.Area.Radius;
 
-                if (company.Area.RealLatitude != null)
+               /* if (company.Area.RealLatitude != null)
                     x.Area.Latitude = (int)(company.Area.RealLatitude * 1000000);
-                else if (company.Area.Latitude != null)
+                else */
+                if (company.Area.Latitude != null)
                     x.Area.Latitude = company.Area.Latitude;
 
-                if (company.Area.RealLongitude != null)
+                /*if (company.Area.RealLongitude != null)
                     x.Area.Longitude = (int)(company.Area.RealLongitude * 1000000);
-                else if (company.Area.Radius != null)
+                else */
+                if (company.Area.Radius != null)
                     x.Area.Longitude = company.Area.Longitude;
             }
 
@@ -326,7 +345,6 @@ namespace CargoApp.Controllers
                 if (company.Address.Addition != null)
                     x.Address.Addition = company.Address.Addition;
             }
-            // Mapper
 
             if (company.PhoneNumber != null)
                 x.PhoneNumber = company.PhoneNumber;
@@ -340,13 +358,8 @@ namespace CargoApp.Controllers
                 x.Kpp = company.Kpp;
             if (company.Ogrn != null)
                 x.Ogrn = company.Ogrn;
-            if (company.OgrnDate != null)
-                x.OgrnDate = company.OgrnDate;
-
 
             _context.Entry(x).State = EntityState.Modified;
-
-
             await _context.SaveChangesAsync();
             
             return Ok(await _context.Companies

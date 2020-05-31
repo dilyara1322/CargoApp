@@ -11,11 +11,13 @@ namespace CargoApp.Models
     {
         [Required]
         public int Id { get; set; }
+       // [MaxLength(30)]
         public string Login { get; set; }
         [ForeignKey("Login")]
         public UserRegData RegData { get; set; }
-        [NotMapped]
-        public bool IsFree { get; set; }
+        public string PhoneNumber { get; set; }
+      //  [NotMapped]
+        //public bool IsFree { get; set; }
         [Required]
         public int CompanyId { get; set; }
         public Company Company { get; set; }
@@ -32,7 +34,7 @@ namespace CargoApp.Models
         public string Name { get; set; }
         */
 
-        public Car Car { get; set; }
+        public List<Car> Cars { get; set; }
         public DeliveryArea DeliveryArea { get; set; }
         //public ГрафикРаботы 
 

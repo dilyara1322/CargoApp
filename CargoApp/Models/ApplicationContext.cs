@@ -50,12 +50,12 @@ namespace CargoApp.Models
 
             //HasIndex()
 
-            //modelBuilder.Entity<UserRegData>().HasAlternateKey(u => u.Login);
             modelBuilder.Entity<Logistician>().HasAlternateKey(u => u.Login);
             modelBuilder.Entity<Driver>().HasAlternateKey(u => u.Login);
             modelBuilder.Entity<Client>().HasAlternateKey(u => u.Login);
 
             modelBuilder.Entity<Passport>().HasAlternateKey(p => new { p.Series, p.Number });
+
 
             modelBuilder.Entity<UserRegData>()
                 .Property(u => u.Name)
@@ -68,6 +68,7 @@ namespace CargoApp.Models
             modelBuilder.Entity<Company>()
                 .Property(u => u.Rating)
                 .HasDefaultValue(null);
+
 
             modelBuilder.Entity<Logistician>()
                 .HasOne(l => l.Company)
@@ -103,10 +104,6 @@ namespace CargoApp.Models
                 .OnDelete(DeleteBehavior.ClientSetNull);
 
 
-            //  modelBuilder.Entity<DeliveryArea>().HasKey(d => new { d.Latitude, d.Longitude, d.Radius });
-            // modelBuilder.Entity<Passport>().HasKey(p => new { p.Series, p.Number });
-
-            //  modelBuilder.Entity<Client>().HasAlternateKey(c => c.Passport);
 
             //modelBuilder.ApplyConfiguration(new CompanyConfiguration());
             //modelBuilder.Entity<Client>(ClientConfigure);

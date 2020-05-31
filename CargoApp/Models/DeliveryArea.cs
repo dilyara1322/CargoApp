@@ -11,7 +11,7 @@ namespace CargoApp.Models
     [Owned]
     public class DeliveryArea
     {
-        [NotMapped]
+       /* [NotMapped]
         private int? latitude;
         [Required]
         public int? Latitude { get { return latitude; }
@@ -34,7 +34,10 @@ namespace CargoApp.Models
         public float? RealLongitude { get { return realLongitude; }
             set { realLongitude = value; longitude = (int)(value * 1000000); } } //реальное значение, не хранится в базе
 
-        [Required]
-        public int? Radius { get; set; } //meters
+        [Required]*/
+
+        public float? Latitude { get; set; }
+        public float? Longitude { get; set; }
+        public float? Radius { get; set; } //meters
     }
 }

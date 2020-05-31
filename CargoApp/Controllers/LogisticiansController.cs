@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CargoApp.Models;
@@ -24,38 +23,60 @@ namespace CargoApp.Controllers
 
         // GET: api/Logisticians
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Logistician>>> GetLogisticians(int limit = 10, int offset = 0, string filters = null)
+        public async Task<ActionResult<IEnumerable<Logistician>>> GetLogisticians(string orderby = "id", int limit = 10, int offset = 0, string filters = null)
         {
-            if (filters == null)
+            if (filters == null && orderby.ToLower() == "id")
             {
                 return await _context.Logisticians
                     .Include(l => l.Company)
                     .Include(l => l.RegData)
                     .Skip(offset)
                     .Take(limit)
+                    .AsNoTracking()
                     //.DefaultIfEmpty()
                     .ToListAsync();
             }
             else
             {
-                Filters filtersObj = new Filters(filters);
-                if (filtersObj.Message != null)
-                    return BadRequest(filtersObj.Message);
+                string where = "";
+                if (filters != null)
+                {
+                    Filters filtersObj = new Filters(filters);
+                    if (filtersObj.Message != null)
+                        return BadRequest(filtersObj.Message);
 
-                string where = filtersObj.GetWhere("Logisticians");
+                    where = filtersObj.GetWhere("Logisticians");
+                }
+                string sortby = "";
+                switch (orderby.ToLower())
+                {
+                    case "id": break;
+                    case "login": sortby = " ORDER BY Logisticians.login "; break;
+                    case "companyid": sortby = " ORDER BY Logisticians.companyId "; break;
+                    default: return BadRequest();
+                }
+
 
                 List<Logistician> logisticians = null;
                 try
                 {
                     string sql = $"SELECT * FROM Logisticians {where}";
-                    logisticians = await _context.Logisticians
-                        .FromSqlRaw(sql)
-                        .Include(l => l.Company)
-                        .Include(l => l.RegData)
-                        .Skip(offset)
-                        .Take(limit)
-                        //.DefaultIfEmpty()
-                        .ToListAsync();
+                    if (sortby == "")
+                        logisticians = await _context.Logisticians
+                            .FromSqlRaw(sql)
+                            .Include(l => l.Company)
+                            .Include(l => l.RegData)
+                            .Skip(offset)
+                            .Take(limit)
+                            .AsNoTracking()
+                            //.DefaultIfEmpty()
+                            .ToListAsync();
+                    else
+                        logisticians = await _context.Logisticians
+                            .FromSqlRaw(sql)
+                            .AsNoTracking()
+                            //.DefaultIfEmpty()
+                            .ToListAsync();
                     return logisticians;
                 }
                 catch (SqlException e)
@@ -80,6 +101,7 @@ namespace CargoApp.Controllers
             var logistician = await _context.Logisticians
                     .Include(l => l.Company)
                     .Include(l => l.RegData)
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(l => l.Id == id);
 
             if (logistician == null)
@@ -99,6 +121,7 @@ namespace CargoApp.Controllers
                         .Where(m => m.LogisticianId == id)
                         .Skip(offset)
                         .Take(limit)
+                        .AsNoTracking()
                         //.DefaultIfEmpty()
                         .ToListAsync();
 
@@ -143,10 +166,8 @@ namespace CargoApp.Controllers
         */
 
         // POST: api/Logisticians
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPost]
-        public async Task<ActionResult<Logistician>> PostLogistician(Logistician logistician)
+        public async Task<ActionResult<Logistician>> PostLogistician([FromBody] Logistician logistician)
         {
             if (logistician == null)
             {
@@ -161,7 +182,7 @@ namespace CargoApp.Controllers
 
         // PATCH api/logisticians/5
         [HttpPatch("{id}")]
-        public async Task<ActionResult<Client>> PatchLogistician([FromRoute] int id, [FromBody] Logistician logistician)
+        public async Task<ActionResult<Client>> PatchLogistician(int id, [FromBody] Logistician logistician)
         {
             if (logistician == null || id != logistician.Id)
                 return BadRequest();

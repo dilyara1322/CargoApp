@@ -25,6 +25,7 @@ namespace CargoApp.Models
 
         [Required]
         public int Id { get; set; }
+       // [MaxLength(30)]
         public string Login { get; set; }
         [ForeignKey("Login")]
         public UserRegData RegData { get; set; }

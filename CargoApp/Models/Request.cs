@@ -27,13 +27,15 @@ namespace CargoApp.Models
         public Status? CurrentStatus { get; set; } = Status.Free;
 
         //public Address CurrentLocation { get; set; } //latitude + longitude?
-        public int? CurrentLatitude { get; set; } // умноженное на 1 000 000
-        public int? CurrentLongitude { get; set; } // умноженное на 1 000 000
+        public float? CurrentLatitude { get; set; } // умноженное на 1 000 000
+        public float? CurrentLongitude { get; set; } // умноженное на 1 000 000
 
+        /*
         [NotMapped]
         public float RealLatitude { get; set; } //реальное значение, не хранится в базе
         [NotMapped]
         public float RealLongitude { get; set; } //реальное значение, не хранится в базе
+        */
 
         public Address SendingAddress { get; set; }
         public DateTime? SendingDateTime { get; set; }

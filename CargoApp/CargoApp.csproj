@@ -21,6 +21,8 @@
     <Compile Remove="Migrations\20200407111252_DivideUsers.Designer.cs" />
     <Compile Remove="Migrations\20200408121926_AlterUserMessages.cs" />
     <Compile Remove="Migrations\20200408121926_AlterUserMessages.Designer.cs" />
+    <Compile Remove="Migrations\20200526135656_KakVZapiske.cs" />
+    <Compile Remove="Migrations\20200526135656_KakVZapiske.Designer.cs" />
   </ItemGroup>
 
   <ItemGroup>

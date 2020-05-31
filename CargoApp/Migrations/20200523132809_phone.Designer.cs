@@ -4,14 +4,16 @@ using CargoApp.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace CargoApp.Migrations
 {
     [DbContext(typeof(ApplicationContext))]
-    partial class ApplicationContextModelSnapshot : ModelSnapshot
+    [Migration("20200523132809_phone")]
+    partial class phone
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -27,16 +29,11 @@ namespace CargoApp.Migrations
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
                     b.Property<float?>("Carrying")
+                        .IsRequired()
                         .HasColumnType("real");
 
                     b.Property<int>("DriverId")
                         .HasColumnType("int");
-
-                    b.Property<float?>("Height")
-                        .HasColumnType("real");
-
-                    b.Property<float?>("Length")
-                        .HasColumnType("real");
 
                     b.Property<string>("Model")
                         .HasColumnType("nvarchar(max)");
@@ -46,14 +43,16 @@ namespace CargoApp.Migrations
                         .HasColumnType("nvarchar(12)")
                         .HasMaxLength(12);
 
-                    b.Property<float?>("Width")
+                    b.Property<float?>("Volume")
+                        .IsRequired()
                         .HasColumnType("real");
 
                     b.HasKey("Id");
 
                     b.HasAlternateKey("Number");
 
-                    b.HasIndex("DriverId");
+                    b.HasIndex("DriverId")
+                        .IsUnique();
 
                     b.ToTable("Cars");
                 });
@@ -109,12 +108,18 @@ namespace CargoApp.Migrations
                     b.Property<float?>("MaxCarrying")
                         .HasColumnType("real");
 
+                    b.Property<float?>("MaxVolume")
+                        .HasColumnType("real");
+
                     b.Property<string>("Name")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Ogrn")
                         .IsRequired()
                         .HasColumnType("char(13)");
+
+                    b.Property<DateTime?>("OgrnDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("nvarchar(max)");
@@ -172,6 +177,9 @@ namespace CargoApp.Migrations
                     b.Property<float?>("Height")
                         .HasColumnType("real");
 
+                    b.Property<bool?>("IsFragile")
+                        .HasColumnType("bit");
+
                     b.Property<float?>("Length")
                         .HasColumnType("real");
 
@@ -182,8 +190,8 @@ namespace CargoApp.Migrations
                     b.Property<int>("RequestId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("Type")
-                        .HasColumnType("int");
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<float?>("Weight")
                         .HasColumnType("real");
@@ -227,13 +235,14 @@ namespace CargoApp.Migrations
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("BirthDate")
-                        .HasColumnType("Date");
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("BirthPlace")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Code")
-                        .HasColumnType("char(7)");
+                        .HasColumnType("nvarchar(7)")
+                        .HasMaxLength(7);
 
                     b.Property<string>("FirstName")
                         .HasColumnType("nvarchar(max)");
@@ -242,18 +251,18 @@ namespace CargoApp.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("IssuedDate")
-                        .HasColumnType("Date");
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Number")
                         .IsRequired()
-                        .HasColumnType("char(6)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Patronymic")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Series")
                         .IsRequired()
-                        .HasColumnType("char(4)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Sex")
                         .HasColumnType("nvarchar(max)");
@@ -305,11 +314,11 @@ namespace CargoApp.Migrations
                     b.Property<int?>("CompanyId")
                         .HasColumnType("int");
 
-                    b.Property<float?>("CurrentLatitude")
-                        .HasColumnType("real");
+                    b.Property<int?>("CurrentLatitude")
+                        .HasColumnType("int");
 
-                    b.Property<float?>("CurrentLongitude")
-                        .HasColumnType("real");
+                    b.Property<int?>("CurrentLongitude")
+                        .HasColumnType("int");
 
                     b.Property<int>("CurrentStatus")
                         .HasColumnType("int");
@@ -378,11 +387,14 @@ namespace CargoApp.Migrations
 
                     b.Property<string>("Name")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("nvarchar(30)")
-                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(max)")
                         .HasDefaultValue("Пользователь");
 
                     b.Property<string>("Password")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Salt")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -394,8 +406,8 @@ namespace CargoApp.Migrations
             modelBuilder.Entity("CargoApp.Models.Car", b =>
                 {
                     b.HasOne("CargoApp.Models.Driver", "Driver")
-                        .WithMany("Cars")
-                        .HasForeignKey("DriverId")
+                        .WithOne("Car")
+                        .HasForeignKey("CargoApp.Models.Car", "DriverId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -434,7 +446,7 @@ namespace CargoApp.Migrations
                                 .HasColumnType("nvarchar(max)");
 
                             b1.Property<string>("Index")
-                                .HasColumnType("char(6)");
+                                .HasColumnType("nvarchar(max)");
 
                             b1.Property<string>("Region")
                                 .HasColumnType("nvarchar(max)");
@@ -457,14 +469,17 @@ namespace CargoApp.Migrations
                                 .HasColumnType("int")
                                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
-                            b1.Property<float?>("Latitude")
-                                .HasColumnType("real");
+                            b1.Property<int?>("Latitude")
+                                .IsRequired()
+                                .HasColumnType("int");
 
-                            b1.Property<float?>("Longitude")
-                                .HasColumnType("real");
+                            b1.Property<int?>("Longitude")
+                                .IsRequired()
+                                .HasColumnType("int");
 
-                            b1.Property<float?>("Radius")
-                                .HasColumnType("real");
+                            b1.Property<int?>("Radius")
+                                .IsRequired()
+                                .HasColumnType("int");
 
                             b1.HasKey("CompanyId");
 
@@ -495,14 +510,17 @@ namespace CargoApp.Migrations
                                 .HasColumnType("int")
                                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
-                            b1.Property<float?>("Latitude")
-                                .HasColumnType("real");
+                            b1.Property<int?>("Latitude")
+                                .IsRequired()
+                                .HasColumnType("int");
 
-                            b1.Property<float?>("Longitude")
-                                .HasColumnType("real");
+                            b1.Property<int?>("Longitude")
+                                .IsRequired()
+                                .HasColumnType("int");
 
-                            b1.Property<float?>("Radius")
-                                .HasColumnType("real");
+                            b1.Property<int?>("Radius")
+                                .IsRequired()
+                                .HasColumnType("int");
 
                             b1.HasKey("DriverId");
 
@@ -597,7 +615,7 @@ namespace CargoApp.Migrations
                                 .HasColumnType("nvarchar(max)");
 
                             b1.Property<string>("Index")
-                                .HasColumnType("char(6)");
+                                .HasColumnType("nvarchar(max)");
 
                             b1.Property<string>("Region")
                                 .HasColumnType("nvarchar(max)");
@@ -636,7 +654,7 @@ namespace CargoApp.Migrations
                                 .HasColumnType("nvarchar(max)");
 
                             b1.Property<string>("Index")
-                                .HasColumnType("char(6)");
+                                .HasColumnType("nvarchar(max)");
 
                             b1.Property<string>("Region")
                                 .HasColumnType("nvarchar(max)");

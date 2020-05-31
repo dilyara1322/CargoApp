@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CargoApp.Models;
@@ -25,48 +24,72 @@ namespace CargoApp.Controllers
 
         // GET: api/Requests
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Request>>> GetRequests(int limit = 10, int offset = 0, string filters = null)
+        public async Task<ActionResult<IEnumerable<Request>>> GetRequests(string orderby = "id", int limit = 10, int offset = 0, string filters = null)
         {
-            if (filters == null)
+            if (filters == null && orderby.ToLower() == "id")
             {
                 return await _context.Requests
                     .Include(r => r.Client)
                     .Include(r => r.Company)
                     .Include(r => r.Driver)
-                    //.Include(r => r.CurrentStatus)
                     .Include(r => r.SendingAddress)
                     .Include(r => r.ReceivingAddress)
                     .Include(r => r.Goods)
                     // .Include(r => r.Messages)
                     .Skip(offset)
                     .Take(limit)
+                    .AsNoTracking()
                     .ToListAsync();
             }
             else
             {
-                Filters filtersObj = new Filters(filters);
-                if (filtersObj.Message != null)
-                    return BadRequest(filtersObj.Message);
+                string where = "";
+                if (filters != null)
+                {
+                    Filters filtersObj = new Filters(filters);
+                    if (filtersObj.Message != null)
+                        return BadRequest(filtersObj.Message);
 
-                string where = filtersObj.GetWhere("Requests");
+                    where = filtersObj.GetWhere("Requests");
+                }
+                string sortby = "";
+                switch (orderby.ToLower())
+                {
+                    case "id": break;
+                    case "clientid": sortby = " ORDER BY Requests.clientid "; break;
+                    case "companyid": sortby = " ORDER BY Requests.companyid "; break;
+                    case "driverid": sortby = " ORDER BY Requests.driverid "; break;
+                    case "currentstatus": sortby = " ORDER BY Requests.currentstatus "; break;
+                    case "sendingdatetime": sortby = " ORDER BY Requests.sendingdatetime "; break;
+                    case "recievingdatetime": sortby = " ORDER BY Requests.recievingdatetime "; break;
+                    default: return BadRequest();
+                }
 
                 List<Request> requests = null;
                 try
                 {
                     string sql = $"SELECT * FROM Requests {where}";
-                    requests = await _context.Requests
-                        .FromSqlRaw(sql)
-                        .Include(r => r.Client)
-                        .Include(r => r.Company)
-                        .Include(r => r.Driver)
-                        //.Include(r => r.CurrentStatus)
-                        .Include(r => r.SendingAddress)
-                        .Include(r => r.ReceivingAddress)
-                        .Include(r => r.Goods)
-                        .Skip(offset)
-                        .Take(limit)
-                        //.DefaultIfEmpty()
-                        .ToListAsync();
+                    if (sortby == "")
+                        requests = await _context.Requests
+                            .FromSqlRaw(sql)
+                            .Include(r => r.Client)
+                            .Include(r => r.Company)
+                            .Include(r => r.Driver)
+                            .Include(r => r.SendingAddress)
+                            .Include(r => r.ReceivingAddress)
+                            .Include(r => r.Goods)
+                            .Skip(offset)
+                            .Take(limit)
+                            .AsNoTracking()
+                            //.DefaultIfEmpty()
+                            .ToListAsync();
+
+                    else
+                        requests = await _context.Requests
+                            .FromSqlRaw(sql)
+                            .AsNoTracking()
+                            //.DefaultIfEmpty()
+                            .ToListAsync();
                     return requests;
                 }
                 catch (SqlException e)
@@ -88,11 +111,11 @@ namespace CargoApp.Controllers
                 .Include(r => r.Client)
                 .Include(r => r.Company)
                 .Include(r => r.Driver)
-                //.Include(r => r.CurrentStatus)
                 .Include(r => r.SendingAddress)
                 .Include(r => r.ReceivingAddress)
                 .Include(r => r.Goods)
-                .Include(r => r.Messages)
+                //.Include(r => r.Messages)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (request == null)
@@ -102,7 +125,7 @@ namespace CargoApp.Controllers
         }
 
         [HttpGet("{id}/{detail}")]
-        public async Task<ActionResult<IEnumerable<object>>> GetRequestDetail(int id, string detail)
+        public async Task<ActionResult<IEnumerable<object>>> GetRequestDetail(int id, string detail, int limit = 10, int offset = 0)
         {
             if (!RequestExists(id))
                 return NotFound();
@@ -111,6 +134,9 @@ namespace CargoApp.Controllers
             {
                 return await _context.UserMessages
                     .Where(m => m.RequestId == id)
+                    .Skip(offset)
+                    .Take(limit)
+                    .AsNoTracking()
                     .ToListAsync();
             }
 
@@ -118,7 +144,48 @@ namespace CargoApp.Controllers
             {
                 return await _context.Goods
                     .Where(g => g.RequestId == id)
+                    .Skip(offset)
+                    .Take(limit)
+                    .AsNoTracking()
                     .ToListAsync();
+            }
+
+            if (detail.ToLower() == "currentplace")
+            {
+                string path = $"http://...?id={id}";
+                string jsonStr = "";
+
+                try
+                {
+                    System.Net.WebRequest reqGET = System.Net.WebRequest.Create(path);
+                    System.Net.WebResponse resp = reqGET.GetResponse();
+                    System.IO.Stream stream = resp.GetResponseStream();
+                    System.IO.StreamReader sr = new System.IO.StreamReader(stream);
+                    jsonStr = sr.ReadToEnd();
+                }
+                catch (Exception e)
+                {
+                    return BadRequest(e.Message);
+                }
+
+                JObject j;
+                try 
+                {
+                    j = JObject.Parse(jsonStr);
+                    float latitude = j.GetValue("Latitude").ToObject<float>();
+                    float longitude = j.GetValue("Longitude").ToObject<float>();
+
+                    var request = await _context.Requests
+                        .FirstOrDefaultAsync(r => r.Id == id);
+                    request.CurrentLatitude = latitude;
+                    request.CurrentLongitude = longitude;
+
+                    return Ok(request);
+                }
+                catch (Exception e)
+                {
+                    return BadRequest(e.Message);
+                }
             }
 
             return NotFound();
@@ -150,7 +217,7 @@ namespace CargoApp.Controllers
 
         // POST: api/Requests
         [HttpPost]
-        public async Task<ActionResult<Request>> PostRequest(Request request)
+        public async Task<ActionResult<Request>> PostRequest([FromBody] Request request)
         {
             if (request == null)
                 return BadRequest();
@@ -162,7 +229,7 @@ namespace CargoApp.Controllers
         }
 
         [HttpPost("{id}/{detail}")]
-        public async Task<ActionResult<Request>> PostRequestDetail(int id, string detail, JObject obj)
+        public async Task<ActionResult<Request>> PostRequestDetail(int id, string detail, [FromBody] JObject obj)
         {
             if (!RequestExists(id))
                 return NotFound();
@@ -206,13 +273,12 @@ namespace CargoApp.Controllers
 
         // PATCH api/requests/5
         [HttpPatch("{id}")]
-        public async Task<ActionResult<Client>> PatchRequest([FromRoute] int id, [FromBody] Request request)
+        public async Task<ActionResult<Client>> PatchRequest(int id, [FromBody] Request request)
         {
             if (request == null)
                 return BadRequest();
 
             Request x = await _context.Requests
-               // .Include(x => x.CurrentStatus)
                 .Include(x => x.SendingAddress)
                 .Include(x => x.ReceivingAddress)
                 //.Include(x => x.Goods)
@@ -284,14 +350,13 @@ namespace CargoApp.Controllers
 
             await _context.SaveChangesAsync();
             return Ok(await _context.Requests
-                //.Include(x => x.CurrentStatus)
                 .Include(x => x.SendingAddress)
                 .Include(x => x.ReceivingAddress)
                // .Include(x => x.Goods)
                 .FirstOrDefaultAsync(x => x.Id == id));
         }
 
-        // PATCH api/requests/5/goods/7
+        // PATCH api/requests/5/good/7
         [HttpPatch("{id}/{detail}/{detailId}")]
         public async Task<ActionResult<Client>> PatchRequestDetails(int id, string detail, int detaild, [FromBody] JObject obj)
         {
@@ -300,7 +365,7 @@ namespace CargoApp.Controllers
             if (obj == null)
                 return BadRequest();
 
-            if (detail.ToLower() == "goods")
+            if (detail.ToLower() == "good")
             {
                 Good good = null;
                 try { good = obj.ToObject<Good>(); }
@@ -325,8 +390,8 @@ namespace CargoApp.Controllers
                     x.Height = good.Height;
                 if (good.Width != null)
                     x.Width = good.Width;
-                if (good.IsFragile != null)
-                    x.IsFragile = good.IsFragile;
+                if (good.Type != null)
+                    x.Type = good.Type;
 
                 _context.Entry(x).State = EntityState.Modified;
 

@@ -7,19 +7,22 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CargoApp.Models
 {
-   // [Table("Cars")]
     public class Car
     {
         [Key]
         public int Id { get; set; }
-        //[DatabaseGenerated(DatabaseGeneratedOption.None)]
+
         [Required]
         [MaxLength(12)]
         public string Number { get; set; }
         public string Model { get; set; }
-        [Required]
-        public float? Volume { get; set; }
-        [Required]
+        ///[Required]
+        public float? Length { get; set; }
+        //[Required]
+        public float? Height { get; set; }
+        //[Required]
+        public float? Width { get; set; }
+        //[Required]
         public float? Carrying { get; set; }
         [Required]
         public int DriverId { get; set; }

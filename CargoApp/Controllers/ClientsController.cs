@@ -2,16 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CargoApp.Models;
-using Microsoft.Extensions.Logging;
-using System.Security.Cryptography;
 using Newtonsoft.Json.Linq;
 using CargoApp.Tools;
 using Microsoft.Data.SqlClient;
-using System.Xml.Serialization;
 
 namespace CargoApp.Controllers
 {
@@ -33,39 +29,59 @@ namespace CargoApp.Controllers
 
         // GET: api/Clients?limit=30&offset=5
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Client>>> GetClients(int limit = 10, int offset = 0, string filters = null)
+        public async Task<ActionResult<IEnumerable<Client>>> GetClients(string orderby = "id", int limit = 10, int offset = 0, string filters = null)
         {
-            if (filters == null)
+            if (filters == null && orderby.ToLower() == "id")
             {
                 return await _context.Clients
                     .Include(c => c.RegData)
                     .Include(c => c.Passport)
-                        //.ThenInclude(p => p.BirthPlace)
                     .Skip(offset)
                     .Take(limit)
+                    .AsNoTracking()
                     //.DefaultIfEmpty()
                     .ToListAsync();
             }
             else
             {
-                Filters filtersObj = new Filters(filters);
-                if (filtersObj.Message != null)
-                    return BadRequest(filtersObj.Message);
+                string where = "";
+                if (filters != null)
+                {
+                    Filters filtersObj = new Filters(filters);
+                    if (filtersObj.Message != null)
+                        return BadRequest(filtersObj.Message);
 
-                string where = filtersObj.GetWhere("Clients");
+                    where = filtersObj.GetWhere("Clients");
+                }
+                string sortby = "";
+                switch (orderby.ToLower())
+                {
+                    case "id": break;
+                    case "login": sortby = " ORDER BY Clients.login "; break;
+                    case "rating": sortby = " ORDER BY Clients.rating "; break;
+                    default: return BadRequest();
+                }
 
                 List<Client> clients = null;
                 try
                 {
-                    string sql = $"SELECT * FROM Clients {where}";
-                    clients = await _context.Clients
-                        .FromSqlRaw(sql)
-                        .Include(c => c.RegData)
-                        .Include(c => c.Passport)
-                        .Skip(offset)
-                        .Take(limit)
-                        //.DefaultIfEmpty()
-                        .ToListAsync();
+                    string sql = $"SELECT * FROM Clients {where} {sortby}";
+                    if (sortby == "")
+                        clients = await _context.Clients
+                            .FromSqlRaw(sql)
+                            .Include(c => c.RegData)
+                            .Include(c => c.Passport)
+                            .Skip(offset)
+                            .Take(limit)
+                            .AsNoTracking()
+                            //.DefaultIfEmpty()
+                            .ToListAsync();
+                    else
+                        clients = await _context.Clients
+                            .FromSqlRaw(sql)
+                            .AsNoTracking()
+                            //.DefaultIfEmpty()
+                            .ToListAsync();
                     return clients;
                 }
                 catch (SqlException e)
@@ -86,7 +102,7 @@ namespace CargoApp.Controllers
             var client = await _context.Clients
                 .Include(c => c.RegData)
                 .Include(c => c.Passport)
-                  //  .ThenInclude(p => p.BirthPlace)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == id);
 
             if (client == null)
@@ -103,26 +119,30 @@ namespace CargoApp.Controllers
             {
                 if (detail == "requests")
                     return await _context.Requests
-                       // .Include(r => r.CurrentStatus)
                         .Include(r => r.SendingAddress)
                         .Include(r => r.ReceivingAddress)
                         .Where(r => r.ClientId == id)
                         .Skip(offset)
                         .Take(limit)
+                        .AsNoTracking()
                         //.DefaultIfEmpty()
                         .ToListAsync();
+                
                 if (detail == "marks")
                     return await _context.Ratings
                         .Where(r => r.ClientId == id)
                         .Skip(offset)
                         .Take(limit)
+                        .AsNoTracking()
                         //.DefaultIfEmpty()
                         .ToListAsync();
+                
                 if (detail == "messages")
                     return await _context.UserMessages
                         .Where(r => r.ClientId == id)
                         .Skip(offset)
                         .Take(limit)
+                        .AsNoTracking()
                         //.DefaultIfEmpty()
                         .ToListAsync();
 
@@ -325,7 +345,7 @@ namespace CargoApp.Controllers
 
         // PATCH api/clients/5
         [HttpPatch("{id}")]
-        public async Task<ActionResult<Client>> PatchClient([FromRoute] int id, [FromBody] Client client)
+        public async Task<ActionResult<Client>> PatchClient(int id, [FromBody] Client client)
         {
             if (client == null)
                 return BadRequest();
@@ -333,7 +353,6 @@ namespace CargoApp.Controllers
             Client x = await _context.Clients
                 .Include(c => c.RegData)
                 .Include(c => c.Passport)
-                   // .ThenInclude(p => p.BirthPlace)
                 .FirstOrDefaultAsync(x => x.Id == id);
 
             if (x == null) 
@@ -387,9 +406,10 @@ namespace CargoApp.Controllers
 
                 if (client.Passport.BirthPlace != null)
                     x.Passport.BirthPlace = client.Passport.BirthPlace;
+
                 /*
-                if (client.Passport.BirthPlace != null)
-                {
+                    if (client.Passport.BirthPlace != null)
+                    {
                     if (x.Passport.BirthPlace == null)
                         x.Passport.BirthPlace = new Address();
 
@@ -409,7 +429,7 @@ namespace CargoApp.Controllers
                         x.Passport.BirthPlace.Flat = client.Passport.BirthPlace.Flat;
                     if (client.Passport.BirthPlace.Addition != null)
                         x.Passport.BirthPlace.Addition = client.Passport.BirthPlace.Addition;
-                }
+                    }
                 */
 
                 if (client.Passport.IssuedBy != null)
@@ -426,7 +446,6 @@ namespace CargoApp.Controllers
             return Ok(await _context.Clients
                 .Include(c => c.RegData)
                 .Include(c => c.Passport)
-                    //.ThenInclude(p => p.BirthPlace)
                 .FirstOrDefaultAsync(x => x.Id == id));
         }
 
@@ -481,6 +500,7 @@ namespace CargoApp.Controllers
                     .FirstOrDefaultAsync(x => x.ClientId == id));
             }
 
+            /*
             if (detail.ToLower() == "mark")
             {
                 Rating mark = null;
@@ -507,6 +527,49 @@ namespace CargoApp.Controllers
 
                 return Ok(await _context.Ratings
                     .Where(r => r.CompanyId == mark.CompanyId)
+                    .FirstOrDefaultAsync(r => r.ClientId == id));
+            }
+            */
+
+            return NotFound();
+        }
+
+        // PATCH api/clients/5/passport
+        [HttpPatch("{id}/{detail}/{detailId}")]
+        public async Task<ActionResult<Client>> PatchClientDetailWithId(int id, string detail, int detailId, [FromBody] JObject obj)
+        {
+            if (!ClientExists(id))
+                return NotFound();
+            if (obj == null)
+                return BadRequest();
+
+            if (detail.ToLower() == "mark")
+            {
+                Rating mark = null;
+                try { mark = obj.ToObject<Rating>(); }
+                catch { return BadRequest(); }
+
+                if (detailId <= 0 || mark.MarkFromUserToCompany == null)
+                    return BadRequest();
+
+                Rating x = await _context.Ratings
+                        .Where(r => r.CompanyId == detailId)
+                        .FirstOrDefaultAsync(r => r.ClientId == id);
+
+                if (x == null)
+                    return NotFound();
+
+               // if (mark.MarkFromUserToCompany != null)
+
+                x.MarkFromUserToCompany = mark.MarkFromUserToCompany;
+
+               // else return BadRequest();
+
+                _context.Entry(x).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                return Ok(await _context.Ratings
+                    .Where(r => r.CompanyId == detailId)
                     .FirstOrDefaultAsync(r => r.ClientId == id));
             }
 
@@ -536,7 +599,7 @@ namespace CargoApp.Controllers
             return Ok(client);
         }
 
-        // DELETE: api/Clients/5/mark
+        // DELETE: api/Clients/5/passport
         [HttpDelete("{id}/{detail}")]
         public async Task<ActionResult<object>> DeleteClientDetail(int id, string detail)
         {

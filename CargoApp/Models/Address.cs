@@ -11,19 +11,21 @@ namespace CargoApp.Models
     [Owned]
     public class Address
     {
-       // [Required]
-       // public int Id { get; set; }
-       /*
-        [Required]
-        public int Latitude { get; set; } //умноженное на 1 000 000
-        [Required]
-        public int Longitude { get; set; } //умноженное на 1 000 000
-        */
+        // [Required]
+        // public int Id { get; set; }
+        /*
+         [Required]
+         public int Latitude { get; set; } //умноженное на 1 000 000
+         [Required]
+         public int Longitude { get; set; } //умноженное на 1 000 000
+         
         [NotMapped]
         public float RealLatitude { get; set; } //реальное значение, не хранится в базе
         [NotMapped]
         public float RealLongitude { get; set; } //реальное значение, не хранится в базе
+*/
 
+        [Column(TypeName = "char(6)")]
         public string Index { get; set; }
         public string Country { get; set; }
         public string Region { get; set; }

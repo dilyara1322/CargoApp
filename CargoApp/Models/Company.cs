@@ -16,7 +16,7 @@ namespace CargoApp.Models
         public float? Rating { get; set; }
 
         public float? MaxCarrying { get; set; }
-        public float? MaxVolume { get; set; }
+        //public float? MaxVolume { get; set; }
         public DeliveryArea Area { get; set; }
 
         public List<Logistician> Logisticians { get; set; }
@@ -38,7 +38,7 @@ namespace CargoApp.Models
         //[MaxLength(13)]
         [Column(TypeName = "char(13)")]
         public string Ogrn { get; set; }
-        public DateTime? OgrnDate { get; set; }
+      //  public DateTime? OgrnDate { get; set; }
 
         public List<Rating> ClientsMarks { get; set; }
         public List<Request> Requests { get; set; }
